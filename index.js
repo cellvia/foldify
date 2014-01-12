@@ -15,14 +15,14 @@ function curry(toBeCurried){
 	if(util.isArray(toBeCurried)){
 		options = _.clone(moreArgs[0]);
 		options.fullPath = true;
-		theseArgs = [toCurry].concat([options], moreArgs.slice(1));
 		_.each(toBeCurried, function(toCurry){
+			theseArgs = [toCurry].concat([options], moreArgs.slice(1));
 			mergeToMe = _.extend(curry.apply(this, theseArgs), mergeToMe);
-		}
+		});
 		return _.bind(curry, "curried", mergeToMe);
 	}
 
-	var	beingCurried = this === "curried",
+	var	beingCurried = this == "curried",
 		isCurryObj = typeof toBeCurried === "object",
 		isCurryDir = typeof toBeCurried === "string",
 		args,
@@ -55,17 +55,16 @@ function populate(dirname, options){
 		separator,
 		parts;
 
-    if(~dirname.indexOf("/"))
-        separator = "/";
-    if(~dirname.indexOf("\\"))
-        separator = "\\";
-
     try{
+	    if(~dirname.indexOf("/"))
+	        separator = "/";
+	    if(~dirname.indexOf("\\"))
+	        separator = "\\";
 	    parts = dirname.split(separator);
-        newdirname = path.dirname( require.resolve( parts.splice(0,1) ) );
+        newdirname = path.dirname( require.resolve( parts[0] ) );
     	if(!~newdirname.indexOf("node_modules")) throw "not a node module";
-        dirname = newdirname + path.sep + parts.join(path.sep));
-    }
+        dirname = newdirname + path.sep + parts.slice(1).join(path.sep);
+    }catch(err){}
 
 	function recurs(thisDir){
 		fs.readdirSync(thisDir).forEach(function(filename){
@@ -75,10 +74,12 @@ function populate(dirname, options){
 				name = path.basename(filename, ext),
 				filepath = path.join(thisDir, filename),
 				propname;
-			if(options.recursive && isDir){
-				recurs(filepath);
+
+			if(isDir){
+				if(options.recursive) recurs(filepath);
 				return
 			}
+
 			if(options.whitelist){
 				options.whitelist = util.isArray(options.whitelist) ? options.whitelist : [options.whitelist];
 				var isWhitelisted = _.some(options.whitelist, function(rule){

@@ -66,34 +66,35 @@ module.exports = function (file) {
             if ( isCurry(node) && !containsUndefinedVariable(args[0]) ) {
                 
                 var thisDir = unparse(args[0]),
-                    fpath = Function(vars, 'return ' + thisDir)(file, dirname),
-                    thisOpts = args[1] ? eval(unparse(args[1])) : {},
+                    fpath = path.normalize( Function(vars, 'return ' + thisDir)(file, dirname) ),
+                    thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
                     obj = "",
                     existingProps = [],
                     separator,
-                    newDir,
+                    resolved,
                     parts;
 
-                if(typeof thisOpts !== "object") return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
-
-                if(~thisDir.indexOf("/"))
-                    separator = "/";
-                if(~thisDir.indexOf("\\"))
-                    separator = "\\";
-
-                try{
-                    parts = thisDir.split(separator);
-                    newDir = path.dirname( require.resolve( parts.splice(0,1) ) );
-                    if(!~newDir.indexOf("node_modules")) throw "not a node module";
-                    thisDir = newDir + path.sep + parts.join(path.sep));
+                if(typeof thisOpts !== "object"){
+                    console.log(thisOpts);
+                    return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
                 }
 
-                ++ pending;
+                try{
+                    if(~fpath.indexOf("/"))
+                        separator = "/";
+                    if(~fpath.indexOf("\\"))
+                        separator = "\\";
+                    parts = fpath.split(separator);
+                    resolved = path.dirname( require.resolve( parts[0] ) );
+                    if(!~resolved.indexOf("node_modules")) throw "not a node module";
+                    fpath = resolved + separator + parts.slice(1).join(separator);                    
+                }catch(err){}
+
                 function recurs(dirname2){
+                    console.log(++ pending);
                     fs.readdir(dirname2, function (err, files) {
                         if (err) return tr.emit('error', err);
-                        obj+= "((function(){ var proxy = {};";
-                        obj+= "if(!_) var _ = require('underscore');";
+                        obj+= "((function(){ var _ = require('underscore'), proxy = {};";
                         obj+= "var curry = require('curryFolder');";
                         obj+= "var returnMe = _.bind(curry, 'curried', proxy);";
 
@@ -105,13 +106,15 @@ module.exports = function (file) {
                                 isDir = ext === '',
                                 propname;
 
-                            if(thisOpts.recursive && isDir){
-                                recurs(filepath);
+                            if(isDir){
+                                if(thisOpts.recursive) recurs(filepath);
                                 return
                             }
 
-                            if((isJs && thisOpts.jsToString) || !isJs)
+                            if((isJs && thisOpts.jsToString) || !isJs){
                                 toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
+                                console.log(toRequire)
+                            }
                             else
                                 toRequire = "require("+JSON.stringify(filepath)+")";
 
@@ -120,7 +123,7 @@ module.exports = function (file) {
                             else
                                 propname = JSON.stringify(filename);
 
-                            if(thisOpts.fullPath || ~_.indexOf(existingProps, propname))
+                            if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
                                 propname = filepath;
                             else
                                 existingProps.push(propname);                            
