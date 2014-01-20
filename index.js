@@ -109,6 +109,11 @@ function populate(dirname, options){
 				returnObj[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
 			else
 				returnObj[propname] = proxy[propname] = require(filepath);
+
+			if(options.trim === true && typeof proxy[name] === "undefined"){
+				delete proxy[name];
+				delete returnObj[name];
+			}
 			
 		});			
 	}
@@ -117,8 +122,8 @@ function populate(dirname, options){
 }	
 
 function evaluate(obj, args, options){
-	var proxy = {};
-	if(options.curryOnly)
+	var proxy = {}, node;
+	if(options.evaluate === false)
 		returnObj = _.bind(curry, "curried", proxy, args);
 	else
 		returnObj = _.bind(curry, "curried", proxy);
@@ -138,13 +143,13 @@ function evaluate(obj, args, options){
 			if(isBlacklisted) continue;
 		}
 
-		var node = obj[name];
-		if(!options.curryOnly && typeof node === "function")
+		node = obj[name];
+		if(options.evaluate !== false && typeof node === "function")
 			returnObj[name] = proxy[name] = node.apply(obj, args)
 		else
 			returnObj[name] = proxy[name] = node;
 		
-		if(options.trimUndefined === true && typeof proxy[name] === "undefined"){
+		if(options.trim === true && typeof proxy[name] === "undefined"){
 			delete proxy[name];
 			delete returnObj[name];
 		}
