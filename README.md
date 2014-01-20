@@ -4,17 +4,24 @@ Import / require entire folder(s), and evaluate / curry the results.
 
 ## Features
 
-completed:
+###completed:
 server side and client side support (via supplied browserify transform)
+
 can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)
+
 functional (continuously returns itself as a function, endlessly iterable)
+
 whitelist / blacklist files or properties at each iteration
+
 compatible with for...in (no additional hidden properties or prototype to sort through)
 
-yet to be completed:
+###yet to be completed:
 return a tree instead of flat literal, based on folder structure
+
 ability to wrap a function around results
+
 if a function does not return or returns undefined (and trim is not set to true) return that same function but with previous arguments curried into it
+
 tests >_<
 
 ## Usage
