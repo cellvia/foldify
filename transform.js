@@ -112,8 +112,8 @@ module.exports = function (file) {
                                 return
                             }
 
-                            if(thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
-                              || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath)) )
+                            if(  (thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
+                              || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath))  )
                                 return;
 
                             if((isJs && thisOpts.jsToString) || !isJs)

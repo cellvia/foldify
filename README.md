@@ -16,9 +16,13 @@ return a tree instead of flat literal, based on folder structure
 ability to wrap a function around results  
 tests >_<
 
+## Usage
+
+There are two steps to usage.  First you must *initialize the hash*, by running curryFolder upon a directory name, an object, or an array of these.  The provided object is useful in itself, but you can then *evaluate the hash* with provided arguments, or just curry them in.  These steps take slightly different options, but both allow whitelisting/blacklisting of filenames/properties to evaluate.
+
 ## Initializing the hash
 
-When the hash is initializaed the result is an object literal with property names taken from the individual filenames, and content taken from the respective files.  
+When the hash is initialized the result is an object literal with property names taken from the individual filenames, and content taken from the respective files.  
 .js and .json files are require() into the hash, while all other files are fs.readFileSync().  
 
 Will return something like:
@@ -110,6 +114,7 @@ var curryFolder = require("curryFolder");
 
 var routes = curryFolder(__dirname + "/routes");
 
+//all routes are attached!
 routes(app);
 ```
 
@@ -159,21 +164,11 @@ If a function or property evaluates to undefined, remove it.
 
 ### allowUndefined (default: false)
 
-If **allowUndefined** is true, functions may return undefined into the hash instead of a curried version of itself:
+Normally, when evaluated function returns nothing (or undefined) as in the math example above, the function itself will be replaced into the hash (with the original arguments curried):
 
 ```javascript
-var curried3 = curried2(10, {allowUndefined: true});
-//sum = 16
+//reference evaluate option code
 
-typeof curried3.mathFunc // undefined
-
-curried3()
-//cannot curry or evaluate further
-```
-
-Normally, when evaluated function returns undefined, the function itself will be placed into the hash (with the original arguments curried):
-
-```javascript
 var curried3 = curried2(10);
 //sum = 16
 
@@ -187,4 +182,16 @@ var curried4 = curried3(20)
 
 curried4()
 //sum = 46
+```
+
+But if **allowUndefined** is true, functions may return undefined into the hash instead of a curried version of itself:
+
+```javascript
+var curried3 = curried2(10, {allowUndefined: true});
+//sum = 16
+
+typeof curried3.mathFunc // undefined
+
+curried3()
+//cannot curry or evaluate further
 ```
