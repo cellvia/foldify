@@ -4,6 +4,7 @@ var path = require('path');
 var through = require('through');
 var falafel = require('falafel');
 var unparse = require('escodegen').generate;
+var minimatch = require('minimatch');
 
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
@@ -111,10 +112,12 @@ module.exports = function (file) {
                                 return
                             }
 
-                            if((isJs && thisOpts.jsToString) || !isJs){
+                            if(thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
+                              || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath)) )
+                                return;
+
+                            if((isJs && thisOpts.jsToString) || !isJs)
                                 toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
-                                console.log(toRequire)
-                            }
                             else
                                 toRequire = "require("+JSON.stringify(filepath)+")";
 
@@ -145,6 +148,13 @@ module.exports = function (file) {
         if (!node) return false;
         if (node.type !== 'CallExpression') return false;
         return node.callee.type === 'Identifier' && curryNames[node.callee.name];
+    }
+
+    function checkList(list, name){
+        list = util.isArray(list) ? list : [list];
+        return list.some(function(rule){
+            return minimatch(rule, name);
+        });
     }
 };
 

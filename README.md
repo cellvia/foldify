@@ -1,43 +1,42 @@
 # curryFolder
 
-Import / require entire folder(s), and evaluate / curry the results.
+Import / require folder(s) of any type of files, and evaluate / curry the results.
 
 ## Features
 
 ###completed:
-server side and client side support (via supplied browserify transform)
-
-can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)
-
-functional (continuously returns itself as a function, endlessly iterable)
-
-whitelist / blacklist files or properties at each iteration
-
+server side and client side support (via supplied browserify transform)  
+can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
+functional (continuously returns itself as a function, endlessly iterable)  
+whitelist / blacklist files or properties at each iteration  
 compatible with for...in (no additional hidden properties or prototype to sort through)
 
 ###yet to be completed:
-return a tree instead of flat literal, based on folder structure
-
-ability to wrap a function around results
-
-if a function does not return or returns undefined (and trim is not set to true) return that same function but with previous arguments curried into it
-
+return a tree instead of flat literal, based on folder structure  
+ability to wrap a function around results  
 tests >_<
 
-## Usage
+## Initializing the hash
 
-### Instantiate the curried folder
+When the hash is initializaed the result is an object literal with property names taken from the individual filenames, and content taken from the respective files.  
+.js and .json files are require() into the hash, while all other files are fs.readFileSync().  
+
+Will return something like:
+```javascript
+{ 	filename: require("filename.js"), 
+	filename2: fs.readFileSync("filename.html") }
+```
+
+### curryFolder( dirname, [options] );
+
+**dirname** may be a path to a folder, node module, node module subdir path (ex: "curryFolder/test"), object, or array of any of these.
+
+In the case of an object, it is simply returned wrapped with the curryFolder functionality.
 
 ```javascript
 var curryFolder = require("curryFolder");
 
 var errorControllers = curryFolder(__dirname + "/lib/controllers/errors");
-```
-
-The result is an object literal with properties something very much like this would return: 
-```javascript
-{ 	filename: require(filename.js), 
-	filename2: fs.readFileSync(filename.html) }
 ```
 
 Even just this object can be useful:
@@ -60,30 +59,75 @@ for(var controllerName in errorControllers){
 }
 ```
 
-### Evaluate the hash
+## Initialization Options
 
-With a folder 'routes' with files like:
+### recursive (default: false) 
+
+Include subfolders.
+
+### whitelist
+
+Uses 'minimatch' upon filepaths using supplied whitelist patterns.  Accepts string or array.
+
+### blacklist
+
+Uses 'minimatch' upon filepaths using supplied blacklist patterns.  Accepts string or array.
+
+### includeExt
+
+When generating the property names for the hash, this determines whether to include extensions.  Default is false for .js and .json, and true for all others.  Manually setting this option will apply it to all filetypes.
+
+### fullPath (default: false)
+
+When generating the property names for the hash, this determines whether to use the full path as the property name.  This is defaulted to for cases of duplicate property names.  
+One benefit of fullPath is more flexibility with minimatch white/black listing upon evaluation.
+
+### jsToString (default: false)
+
+Import js / json files as strings rather than require them.
+
+## Evaluating the hash
+
+Once the hash is initialized, it becomes a function that can be evaluated.  It is also an object whose properties make up the hash.  Everytime the function is evaluated, it returns another function-object that can also be evaluated.
+
+Evaluation is very useful when keeping folders of files that are functions taking similar arguments.  
+
+For example a single file within a folder of express routes would look like this:
 ```javascript
 module.exports = function(app){
 	app.get('/', function(req, res){ res.end("hello world"); });
 }
 ```
 
-To attach all routes using the supplied variable:
+### evaluateHash( [args], [options] );
+
+**args** is optional, and may be a single argument, or an array of arguments.  If you would like to pass in an array, you must encapsulate it with another array, or it will be parsed as if the values within that array represent arguments.
+
+Following from the example above, to attach all routes to the same express app:
 ```javascript
 var app = express();
 var curryFolder = require("curryFolder");
 
-var routes = curryFolder(__dirname + "/lib/routes");
+var routes = curryFolder(__dirname + "/routes");
 
 routes(app);
 ```
 
+## Evaluation options
 
+### whitelist
 
-### Only curry the hash
+Uses 'minimatch' upon property names using supplied whitelist pattern(s).  Accepts string or array.
 
-With a folder 'matchFuncs' with files like:
+### blacklist
+
+Uses 'minimatch' upon property names using supplied blacklist pattern(s).  Accepts string or array.
+
+### evaluate (default: true)
+
+Set to false if you only want to curry the hash's functions.
+
+With a folder 'mathFuncs' with files like:
 ```javascript
 module.exports = sum;
 function sum(){
@@ -93,58 +137,54 @@ function sum(){
 }
 ```
 
-To curry only, set 'evaluate' to false:
 ```javascript
 var curryFolder = require("curryFolder");
 var mathFuncs = curryFolder(__dirname + "/lib/mathFuncs");
 
-//does not evaluate
+//To curry only, set 'evaluate' to false:
 var curried = mathFuncs(1, {evaluate: false});
 
-//evaluates, while also currying previous arguments
-var curried2 = curried([2,3]);
+var curried2 = curried([2,3], {evaluate: false});
+
+curried()
+//sum = 1
+
+curried2()
 //sum = 6
-
-curried2(5)
-//sum = 11
-
-var curried3 = curried2(10);
-//sum = 16
-
-curried3(20)
-//sum = 36
 ```
-
-## Options
-
-### recursive (default: false) 
-
-Include subfolders.  Only available in initial import.
-
-### whitelist
-
-Uses 'minimatch' upon filepaths / property names using supplied whitelist patterns.  Can be supplied at any iteration.
-
-### blacklist
-
-Uses 'minimatch' upon filepaths / property names using supplied blacklist patterns.  Can be supplied at any iteration.
 
 ### trim (default: false)
 
 If a function or property evaluates to undefined, remove it.
 
-### evaluate (default: true)
+### allowUndefined (default: false)
 
-Set to false if you want to curry the folder's functions instead of evaluate them.
+If **allowUndefined** is true, functions may return undefined into the hash instead of a curried version of itself:
 
-### includeExt
+```javascript
+var curried3 = curried2(10, {allowUndefined: true});
+//sum = 16
 
-When generating the initial object property names, whether to include extensions.  Default is false for .js and .json, and true for all others.  Manually setting this option will apply it to all filetypes.
+typeof curried3.mathFunc // undefined
 
-### fullPath (default: false)
+curried3()
+//cannot curry or evaluate further
+```
 
-When generating the initial object property names, whether to use the full path.  Will happen automatically if duplicate filenames are encountered.
+Normally, when evaluated function returns undefined, the function itself will be placed into the hash (with the original arguments curried):
 
-### jsToString (default: false)
+```javascript
+var curried3 = curried2(10);
+//sum = 16
 
-Import js as string rather than evaluate it.
+typeof curried3.mathFunc // function
+
+curried3()
+//sum = 16
+
+var curried4 = curried3(20)
+//sum = 36
+
+curried4()
+//sum = 46
+```

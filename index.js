@@ -10,44 +10,75 @@ function curry(toBeCurried){
 	if(!toBeCurried) return false;
 	var moreArgs = [].slice.call(arguments, 1),
 		mergeToMe = {},
-		theseArgs;
+		options,
+		individual,
+		originalFullPath;
 
 	if(util.isArray(toBeCurried)){
-		options = _.clone(moreArgs[0]);
-		options.fullPath = true;
+		options = moreArgs[0];
+		originalFullPath = options.fullPath;
 		_.each(toBeCurried, function(toCurry){
-			theseArgs = [toCurry].concat([options], moreArgs.slice(1));
-			mergeToMe = _.extend(curry.apply(this, theseArgs), mergeToMe);
+			individual = curry.call(this, toCurry, options)
+			for(var prop in individual){
+				if(mergeToMe[prop]){
+					options.fullPath = true;
+					individual = curry.call(this, toCurry, options);
+					options.fullPath = originalFullPath;
+					break;
+				}
+			}
+			_.extend(mergeToMe, individual);
 		});
 		return _.bind(curry, "curried", mergeToMe);
 	}
 
 	var	beingCurried = this == "curried",
-		isCurryObj = typeof toBeCurried === "object",
-		isCurryDir = typeof toBeCurried === "string",
+		isObj = typeof toBeCurried === "object" && !beingCurried,
+		isCurryObj = typeof toBeCurried === "object" && beingCurried,
+		isDir = typeof toBeCurried === "string",
 		args,
-		options;
-
-	if(!isCurryObj && !isCurryDir)
-		return false
+		output,
+		combined;
 	
-	if(isCurryObj && beingCurried){
-		args = moreArgs[0] || [];
-		args = util.isArray(args) ? args : [args]
-		args2 = moreArgs[1] || [];
-		args2 = util.isArray(args2) ? args2 : [args2]
-		args = args.concat(args2);
-		options = moreArgs[2] || {};
-	}else{
-		options = moreArgs[0] || {};
+	switch(false){
+		case !isDir:
+			options = moreArgs[0] || {};
+			output = populate.apply(this, [toBeCurried, options]);
+		break;
+		case !isCurryObj:
+			args = moreArgs[0] || [];
+			args = util.isArray(args) ? args : [args]
+			args2 = moreArgs[1] || [];
+			args2 = util.isArray(args2) ? args2 : [args2]
+			args = args.concat(args2);
+			options = moreArgs[2] || {};
+			output = evaluate.apply(this, [toBeCurried, args, options]);
+		break;
+		case !isObj:
+			options = moreArgs[0] || {};
+			combined = _.extend(curry, toBeCurried);
+			for(var name in combined){
+				if( (options.whitelist && !checkList(options.whitelist, name))
+				  || (options.blacklist && checkList(options.blacklist, name)) )
+					delete combined[name];
+			}
+			output = _.bind(combined, "curried", combined);
+		break;
 	}
 
-	return isCurryDir ? populate.apply("curried", [toBeCurried, options]) : evaluate.apply("curried", [toBeCurried, args, options]);
-	
+	return output;
+
 };
 
+function checkList(list, name){
+	list = util.isArray(list) ? list : [list];
+	return _.some(list, function(rule){
+		return minimatch(rule, name);
+	});
+}
+
 function populate(dirname, options){
-	if(!fs.readdirSync) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
+	if(!fs) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
 	var proxy = {},
 		returnObj = _.bind(curry, "curried", proxy),
 		existingProps = [],
@@ -80,20 +111,9 @@ function populate(dirname, options){
 				return
 			}
 
-			if(options.whitelist){
-				options.whitelist = util.isArray(options.whitelist) ? options.whitelist : [options.whitelist];
-				var isWhitelisted = _.some(options.whitelist, function(rule){
-					return minimatch(rule, filename);
-				});
-				if(!isWhitelisted) return;
-			}
-			if(options.blacklist){
-				options.blacklist = util.isArray(options.blacklist) ? options.blacklist : [options.blacklist];
-				var isBlacklisted = _.some(options.blacklist, function(rule){
-					return minimatch(rule, filename);
-				});
-				if(isBlacklisted) return;
-			}
+			if( (options.whitelist && !checkList(options.whitelist, filename))
+			  || (options.blacklist && checkList(options.blacklist, filename)) )
+				return;
 
 			if(!options.includeExt && (isJs || options.includeExt === false) )
 				propname = name;
@@ -109,11 +129,6 @@ function populate(dirname, options){
 				returnObj[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
 			else
 				returnObj[propname] = proxy[propname] = require(filepath);
-
-			if(options.trim === true && typeof proxy[name] === "undefined"){
-				delete proxy[name];
-				delete returnObj[name];
-			}
 			
 		});			
 	}
@@ -121,37 +136,33 @@ function populate(dirname, options){
 	return returnObj;
 }	
 
-function evaluate(obj, args, options){
-	var proxy = {}, node;
+function evaluate(srcObj, args, options){
+	var proxy = {}, node, isWhitelisted, isBlacklisted;
 	if(options.evaluate === false)
 		returnObj = _.bind(curry, "curried", proxy, args);
 	else
 		returnObj = _.bind(curry, "curried", proxy);
-	for(var name in obj){
-		if(options.whitelist){
-			options.whitelist = util.isArray(options.whitelist) ? options.whitelist : [options.whitelist];
-			var isWhitelisted = _.some( options.whitelist, function(rule){
-				return minimatch(rule, name);
-			});
-			if(!isWhitelisted) continue;
-		}
-		if(options.blacklist){
-			options.blacklist = util.isArray(options.blacklist) ? options.blacklist : [options.blacklist];
-			var isBlacklisted = _.some( options.blacklist, function(rule){
-				return minimatch(rule, name);
-			});
-			if(isBlacklisted) continue;
-		}
+	for(var prop in srcObj){
 
-		node = obj[name];
+		if(options.whitelist && !checkList(options.whitelist, prop))
+			continue;
+
+		if(options.blacklist && checkList(options.blacklist, prop))
+			continue;
+
+		node = srcObj[prop];
 		if(options.evaluate !== false && typeof node === "function")
-			returnObj[name] = proxy[name] = node.apply(obj, args)
+			returnObj[prop] = proxy[prop] = node.apply(srcObj, args)
 		else
-			returnObj[name] = proxy[name] = node;
+			returnObj[prop] = proxy[prop] = _.bind(node, srcObj, args);
 		
-		if(options.trim === true && typeof proxy[name] === "undefined"){
-			delete proxy[name];
-			delete returnObj[name];
+		if(typeof proxy[prop] === "undefined" && !options.allowUndefined){
+			if(options.trim === true){
+				delete proxy[prop];
+				delete returnObj[prop];				
+			}else{
+				returnObj[prop] = proxy[prop] = _.bind(node, srcObj, args);
+			}
 		}
 	}
 	return returnObj;
