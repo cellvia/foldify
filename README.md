@@ -69,6 +69,10 @@ for(var controllerName in errorControllers){
 
 Include subfolders.
 
+### output (default: "object")
+
+*output* can be set to string, array, or object.  If string or array, all files will be imported as strings.
+
 ### whitelist
 
 Uses 'minimatch' upon filepaths using supplied whitelist patterns.  Accepts string or array.

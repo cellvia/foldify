@@ -1,8 +1,7 @@
 var fs = require('fs'),
 	path = require('path'),
 	util = require('util'),
-	minimatch = require('minimatch'),
-	_ = require('underscore');
+	minimatch = require('minimatch');
 
 module.exports = curry;
 
@@ -17,7 +16,7 @@ function curry(toBeCurried){
 	if(util.isArray(toBeCurried)){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
-		_.each(toBeCurried, function(toCurry){
+		toBeCurried.forEach(function(toCurry){
 			individual = curry.call(this, toCurry, options)
 			for(var prop in individual){
 				if(mergeToMe[prop]){
@@ -27,9 +26,11 @@ function curry(toBeCurried){
 					break;
 				}
 			}
-			_.extend(mergeToMe, individual);
+			for (var prop in individual) {
+	          mergeToMe[prop] = individual[prop];
+	        }
 		});
-		return _.bind(curry, "curried", mergeToMe);
+		return curry.bind( "curried", mergeToMe );
 	}
 
 	var	beingCurried = this == "curried",
@@ -56,13 +57,13 @@ function curry(toBeCurried){
 		break;
 		case !isObj:
 			options = moreArgs[0] || {};
-			combined = _.extend(curry, toBeCurried);
-			for(var name in combined){
+			for(var name in toBeCurried){
 				if( (options.whitelist && !checkList(options.whitelist, name))
 				  || (options.blacklist && checkList(options.blacklist, name)) )
-					delete combined[name];
+					continue
+				curry[name] = toBeCurried[name];
 			}
-			output = _.bind(combined, "curried", combined);
+			output = curry.bind( "curried", curry );
 		break;
 	}
 
@@ -72,7 +73,7 @@ function curry(toBeCurried){
 
 function checkList(list, name){
 	list = util.isArray(list) ? list : [list];
-	return _.some(list, function(rule){
+	return list.some(function(rule){
 		rule = "**" + path.sep + rule;
 		return minimatch(name, rule);
 	});
@@ -81,11 +82,21 @@ function checkList(list, name){
 function populate(dirname, options){
 	if(!fs) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
 	var proxy = {},
-		returnObj = _.bind(curry, "curried", proxy),
+		toString = options.output.toLowerCase() === "string",
+		toArray = options.output.toLowerCase() === "array",
+		returnMe,
 		existingProps = [],
 		newdirname,
 		separator,
 		parts;
+
+	if(toString){
+		returnMe = "";
+	}else if(toArray){
+		returnMe = [];
+	}else{
+		returnMe = curry.bind( "curried", proxy ),	
+	}
 
     try{
 	    if(~dirname.indexOf("/"))
@@ -116,33 +127,43 @@ function populate(dirname, options){
 			  || (options.blacklist && checkList(options.blacklist, filename)) )
 				return;
 
+			if( toString ){
+				returnMe += fs.readFileSync(filepath, "utf-8");					
+				return
+			}
+
+			if( toArray ){
+				returnMe.push( fs.readFileSync(filepath, "utf-8") );
+				return
+			}
+
 			if(!options.includeExt && (isJs || options.includeExt === false) )
 				propname = name;
 			else
 				propname = filename;
 
-	        if(options.fullPath || ~_.indexOf(existingProps, propname))
+	        if(options.fullPath || ~existingProps.indexOf(propname))
 	            propname = filepath;
 	        else
 	            existingProps.push(propname);                            
 
 			if((isJs && options.jsToString) || !isJs )
-				returnObj[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
+				returnMe[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
 			else
-				returnObj[propname] = proxy[propname] = require(filepath);
+				returnMe[propname] = proxy[propname] = require(filepath);
 			
 		});			
 	}
 	recurs(dirname);
-	return returnObj;
+	return returnMe;
 }	
 
 function evaluate(srcObj, args, options){
 	var proxy = {}, node, isWhitelisted, isBlacklisted;
 	if(options.evaluate === false)
-		returnObj = _.bind(curry, "curried", proxy, args);
+		returnObj = curry.bind( "curried", proxy, args);
 	else
-		returnObj = _.bind(curry, "curried", proxy);
+		returnObj = curry.bind( "curried", proxy);
 	for(var prop in srcObj){
 
 		if(options.whitelist && !checkList(options.whitelist, prop))
@@ -155,16 +176,114 @@ function evaluate(srcObj, args, options){
 		if(options.evaluate !== false && typeof node === "function")
 			returnObj[prop] = proxy[prop] = node.apply(srcObj, args)
 		else
-			returnObj[prop] = proxy[prop] = _.bind(node, srcObj, args);
+			returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
 		
 		if(typeof proxy[prop] === "undefined" && !options.allowUndefined){
 			if(options.trim === true){
 				delete proxy[prop];
 				delete returnObj[prop];				
 			}else{
-				returnObj[prop] = proxy[prop] = _.bind(node, srcObj, args);
+				returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
 			}
 		}
 	}
 	return returnObj;
 }
+
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement, fromIndex) {
+      if ( this === undefined || this === null ) {
+        throw new TypeError( '"this" is null or not defined' );
+      }
+
+      var length = this.length >>> 0; // Hack to convert object.length to a UInt32
+
+      fromIndex = +fromIndex || 0;
+
+      if (Math.abs(fromIndex) === Infinity) {
+        fromIndex = 0;
+      }
+
+      if (fromIndex < 0) {
+        fromIndex += length;
+        if (fromIndex < 0) {
+          fromIndex = 0;
+        }
+      }
+
+      for (;fromIndex < length; fromIndex++) {
+        if (this[fromIndex] === searchElement) {
+          return fromIndex;
+        }
+      }
+
+      return -1;
+    };
+  }
+if (!Array.prototype.forEach) {
+  Array.prototype.forEach = function(fun /*, thisArg */)
+  {
+    "use strict";
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun !== "function")
+      throw new TypeError();
+
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t)
+        fun.call(thisArg, t[i], i, t);
+    }
+  };
+}
+if (!Array.prototype.some) {
+  Array.prototype.some = function(fun /*, thisArg */)
+  {
+    'use strict';
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun !== 'function')
+      throw new TypeError();
+
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t && fun.call(thisArg, t[i], i, t))
+        return true;
+    }
+
+    return false;
+  };
+};
+if (!Function.prototype.bind) {
+  Function.prototype.bind = function (oThis) {
+    if (typeof this !== "function") {
+      // closest thing possible to the ECMAScript 5 internal IsCallable function
+      throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+    }
+
+    var aArgs = Array.prototype.slice.call(arguments, 1), 
+        fToBind = this, 
+        fNOP = function () {},
+        fBound = function () {
+          return fToBind.apply(this instanceof fNOP && oThis
+                                 ? this
+                                 : oThis,
+                               aArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+
+    fNOP.prototype = this.prototype;
+    fBound.prototype = new fNOP();
+
+    return fBound;
+  };
+};

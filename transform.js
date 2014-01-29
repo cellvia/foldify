@@ -7,6 +7,55 @@ var falafel = require('falafel');
 var unparse = require('escodegen').generate;
 var minimatch = require('minimatch');
 
+var bindShim = 'if (!Function.prototype.bind) {
+  Function.prototype.bind = function (oThis) {
+    if (typeof this !== "function") {
+      // closest thing possible to the ECMAScript 5 internal IsCallable function
+      throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+    }
+
+    var aArgs = Array.prototype.slice.call(arguments, 1), 
+        fToBind = this, 
+        fNOP = function () {},
+        fBound = function () {
+          return fToBind.apply(this instanceof fNOP && oThis
+                                 ? this
+                                 : oThis,
+                               aArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+
+    fNOP.prototype = this.prototype;
+    fBound.prototype = new fNOP();
+
+    return fBound;
+  };
+}';
+
+var someShim = "if (!Array.prototype.some)
+{
+  Array.prototype.some = function(fun /*, thisArg */)
+  {
+    'use strict';
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun !== 'function')
+      throw new TypeError();
+
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t && fun.call(thisArg, t[i], i, t))
+        return true;
+    }
+
+    return false;
+  };
+}";
+
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
     var data = '';
@@ -78,9 +127,11 @@ module.exports = function (file) {
                     parts;
 
                 if(typeof thisOpts !== "object"){
-                    console.log(thisOpts);
                     return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
                 }
+
+                var toString = thisOpts.output.toLowerCase() === "string",
+                    toArray = thisOpts.output.toLowerCase() === "array";
 
                 try{
                     if(~thisDirParsed.indexOf("/"))
@@ -91,12 +142,20 @@ module.exports = function (file) {
                     resolved = path.dirname( require.resolve( parts[0] + separator + 'package.json' ) );
                     if(!~resolved.indexOf("node_modules")) throw "not a node module";
                     fpath = resolved + path.sep + parts.slice(1).join(separator);                    
-                    console.log(fpath);
                 }catch(err){}
 
-                obj+= "((function(){ var _ = require('underscore'), proxy = {};";
-                obj+= "var curry = require('curryFolder');";
-                obj+= "var returnMe = _.bind(curry, 'curried', proxy);";
+                obj+= "((function(){ ";
+                obj+= bindShim + someShim;
+                
+                if(toString){
+                    obj+= "var returnMe = ''";                                    
+                }
+                else if(toArray){
+                    obj+= "var returnMe = [];";
+                }else{
+                    obj+= "var curry = require('curryFolder'), proxy = {};";
+                    obj+= "var returnMe = curry.bind('curried', proxy);";
+                }
 
                 function recurs(dirname2){
                     var files = fs.readdirSync(dirname2);
@@ -114,11 +173,19 @@ module.exports = function (file) {
                             return
                         }
 
-                        console.log("whitelist"+filepath)
-
                         if(  (thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
                           || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath))  )
                             return;
+
+                        if( toString ){
+                            obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
+                            return
+                        }
+
+                        if( toArray ){
+                            obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
+                            return
+                        }
 
                         if((isJs && thisOpts.jsToString) || !isJs)
                             toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
