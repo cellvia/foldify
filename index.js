@@ -73,7 +73,8 @@ function curry(toBeCurried){
 function checkList(list, name){
 	list = util.isArray(list) ? list : [list];
 	return _.some(list, function(rule){
-		return minimatch(rule, name);
+		rule = "**" + path.sep + rule;
+		return minimatch(name, rule);
 	});
 }
 

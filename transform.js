@@ -1,5 +1,6 @@
 var fs = require('fs');
 var path = require('path');
+var util = require('util');
 
 var through = require('through');
 var falafel = require('falafel');
@@ -67,6 +68,7 @@ module.exports = function (file) {
             if ( isCurry(node) && !containsUndefinedVariable(args[0]) ) {
                 
                 var thisDir = unparse(args[0]),
+                    thisDirParsed = eval(thisDir),
                     fpath = path.normalize( Function(vars, 'return ' + thisDir)(file, dirname) ),
                     thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
                     obj = "",
@@ -81,64 +83,64 @@ module.exports = function (file) {
                 }
 
                 try{
-                    if(~fpath.indexOf("/"))
+                    if(~thisDirParsed.indexOf("/"))
                         separator = "/";
-                    if(~fpath.indexOf("\\"))
+                    if(~thisDirParsed.indexOf("\\"))
                         separator = "\\";
-                    parts = fpath.split(separator);
-                    resolved = path.dirname( require.resolve( parts[0] ) );
+                    parts = thisDirParsed.split(separator);
+                    resolved = path.dirname( require.resolve( parts[0] + separator + 'package.json' ) );
                     if(!~resolved.indexOf("node_modules")) throw "not a node module";
-                    fpath = resolved + separator + parts.slice(1).join(separator);                    
+                    fpath = resolved + path.sep + parts.slice(1).join(separator);                    
+                    console.log(fpath);
                 }catch(err){}
 
+                obj+= "((function(){ var _ = require('underscore'), proxy = {};";
+                obj+= "var curry = require('curryFolder');";
+                obj+= "var returnMe = _.bind(curry, 'curried', proxy);";
+
                 function recurs(dirname2){
-                    console.log(++ pending);
-                    fs.readdir(dirname2, function (err, files) {
-                        if (err) return tr.emit('error', err);
-                        obj+= "((function(){ var _ = require('underscore'), proxy = {};";
-                        obj+= "var curry = require('curryFolder');";
-                        obj+= "var returnMe = _.bind(curry, 'curried', proxy);";
+                    var files = fs.readdirSync(dirname2);
 
-                        files.forEach(function(filename){
-                            var filepath = path.join(dirname2,filename),
-                                ext = path.extname(filename),
-                                name = path.basename(filename, ext),
-                                isJs = ext === ".js" || ext === ".json",
-                                isDir = ext === '',
-                                propname;
+                    files.forEach(function(filename){
+                        var filepath = path.join(dirname2,filename),
+                            ext = path.extname(filename),
+                            name = path.basename(filename, ext),
+                            isJs = ext === ".js" || ext === ".json",
+                            isDir = ext === '',
+                            propname;
 
-                            if(isDir){
-                                if(thisOpts.recursive) recurs(filepath);
-                                return
-                            }
+                        if(isDir){
+                            if(thisOpts.recursive) recurs(filepath);
+                            return
+                        }
 
-                            if(  (thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
-                              || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath))  )
-                                return;
+                        console.log("whitelist"+filepath)
 
-                            if((isJs && thisOpts.jsToString) || !isJs)
-                                toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
-                            else
-                                toRequire = "require("+JSON.stringify(filepath)+")";
+                        if(  (thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
+                          || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath))  )
+                            return;
 
-                            if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
-                                propname = JSON.stringify(name);
-                            else
-                                propname = JSON.stringify(filename);
+                        if((isJs && thisOpts.jsToString) || !isJs)
+                            toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
+                        else
+                            toRequire = "require("+JSON.stringify(filepath)+")";
 
-                            if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
-                                propname = filepath;
-                            else
-                                existingProps.push(propname);                            
+                        if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
+                            propname = JSON.stringify(name);
+                        else
+                            propname = JSON.stringify(filename);
 
-                            obj += "returnMe[" + propname + "] = " + "proxy[" + propname + "] = " + toRequire + ";";
-                        });
-                        obj += "return returnMe;})())";
-                        node.update(obj);
-                        if (--pending === 0) finish(output);
-                    });                    
+                        if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
+                            propname = filepath;
+                        else
+                            existingProps.push(propname);                            
+
+                        obj += "returnMe[" + propname + "] = " + "proxy[" + propname + "] = " + toRequire + ";";
+                    });
                 }
                 recurs(fpath);
+                obj += "return returnMe;})())";
+                node.update(obj);
             }
         });
         return output;
@@ -153,7 +155,8 @@ module.exports = function (file) {
     function checkList(list, name){
         list = util.isArray(list) ? list : [list];
         return list.some(function(rule){
-            return minimatch(rule, name);
+            rule = "**" + path.sep + rule;
+            return minimatch(name, rule);
         });
     }
 };
