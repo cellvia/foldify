@@ -7,54 +7,8 @@ var falafel = require('falafel');
 var unparse = require('escodegen').generate;
 var minimatch = require('minimatch');
 
-var bindShim = 'if (!Function.prototype.bind) {
-  Function.prototype.bind = function (oThis) {
-    if (typeof this !== "function") {
-      // closest thing possible to the ECMAScript 5 internal IsCallable function
-      throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
-    }
-
-    var aArgs = Array.prototype.slice.call(arguments, 1), 
-        fToBind = this, 
-        fNOP = function () {},
-        fBound = function () {
-          return fToBind.apply(this instanceof fNOP && oThis
-                                 ? this
-                                 : oThis,
-                               aArgs.concat(Array.prototype.slice.call(arguments)));
-        };
-
-    fNOP.prototype = this.prototype;
-    fBound.prototype = new fNOP();
-
-    return fBound;
-  };
-}';
-
-var someShim = "if (!Array.prototype.some)
-{
-  Array.prototype.some = function(fun /*, thisArg */)
-  {
-    'use strict';
-
-    if (this === void 0 || this === null)
-      throw new TypeError();
-
-    var t = Object(this);
-    var len = t.length >>> 0;
-    if (typeof fun !== 'function')
-      throw new TypeError();
-
-    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
-    for (var i = 0; i < len; i++)
-    {
-      if (i in t && fun.call(thisArg, t[i], i, t))
-        return true;
-    }
-
-    return false;
-  };
-}";
+var bindShim = 'Function.prototype.bind||(Function.prototype.bind=function(a){if("function"!=typeof this)throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(this instanceof d&&a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});';
+var someShim = 'Array.prototype.some||(Array.prototype.some=function(a){"use strict";if(void 0===this||null===this)throw new TypeError;var b=Object(this),c=b.length>>>0;if("function"!=typeof a)throw new TypeError;for(var d=arguments.length>=2?arguments[1]:void 0,e=0;c>e;e++)if(e in b&&a.call(d,b[e],e,b))return!0;return!1});';
 
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
@@ -130,8 +84,8 @@ module.exports = function (file) {
                     return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
                 }
 
-                var toString = thisOpts.output.toLowerCase() === "string",
-                    toArray = thisOpts.output.toLowerCase() === "array";
+                var toString = thisOpts.output && thisOpts.output.toLowerCase() === "string",
+                    toArray = thisOpts.output && thisOpts.output.toLowerCase() === "array";
 
                 try{
                     if(~thisDirParsed.indexOf("/"))
@@ -148,7 +102,7 @@ module.exports = function (file) {
                 obj+= bindShim + someShim;
                 
                 if(toString){
-                    obj+= "var returnMe = ''";                                    
+                    obj+= "var returnMe = '';";                                    
                 }
                 else if(toArray){
                     obj+= "var returnMe = [];";
@@ -160,8 +114,11 @@ module.exports = function (file) {
                 function recurs(dirname2){
                     var files = fs.readdirSync(dirname2);
 
+                    if(thisOpts.whitelist) files = whitelist(thisOpts.whitelist, files, dirname2)
+                    if(thisOpts.blacklist) files = blacklist(thisOpts.blacklist, files, dirname2)
+
                     files.forEach(function(filename){
-                        var filepath = path.join(dirname2,filename),
+                        var filepath = path.join(dirname2, filename),
                             ext = path.extname(filename),
                             name = path.basename(filename, ext),
                             isJs = ext === ".js" || ext === ".json",
@@ -172,10 +129,6 @@ module.exports = function (file) {
                             if(thisOpts.recursive) recurs(filepath);
                             return
                         }
-
-                        if(  (thisOpts.whitelist && !checkList(thisOpts.whitelist, filepath))
-                          || (thisOpts.blacklist && checkList(thisOpts.blacklist, filepath))  )
-                            return;
 
                         if( toString ){
                             obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
@@ -219,12 +172,35 @@ module.exports = function (file) {
         return node.callee.type === 'Identifier' && curryNames[node.callee.name];
     }
 
-    function checkList(list, name){
-        list = util.isArray(list) ? list : [list];
-        return list.some(function(rule){
+    function whitelist(whitelist, files, prefix){
+        if(!whitelist || !files) return
+        var output = [];
+        whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
+        whitelist.forEach(function(rule){
             rule = "**" + path.sep + rule;
-            return minimatch(name, rule);
+            files.forEach( function(name){
+                if(~output.indexOf(name)) return
+                var matchname = path.join(prefix, name);
+                if( path.extname(name) === '' || minimatch(matchname, rule) )
+                    output.push(name);
+            }) 
         });
+        return output;
+    }
+
+    function blacklist(blacklist, files, prefix){
+        if(!blacklist || !files) return
+        var output = [];
+        blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
+        blacklist.forEach(function(rule){
+            rule = "**" + path.sep + rule;
+            files.forEach( function(name){
+                var matchname = path.join(prefix, name);
+                if( !~output.indexOf(name) && (path.extname(name) === '' || !minimatch(matchname, rule)) )
+                    output.push(name);
+            }) 
+        });
+        return output;
     }
 };
 

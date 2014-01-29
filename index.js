@@ -79,11 +79,42 @@ function checkList(list, name){
 	});
 }
 
+function whitelist(whitelist, files, prefix){
+    if(!whitelist || !files) return
+    var output = [];
+    whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
+    whitelist.forEach(function(rule){
+        rule = "**" + path.sep + rule;
+        files.forEach( function(name){
+            if(~output.indexOf(name)) return
+            var matchname = path.join(prefix, name);
+            if( minimatch(matchname, rule) )
+                output.push(name);
+        }) 
+    });
+    return output;
+}
+
+function blacklist(blacklist, files, prefix){
+    if(!blacklist || !files) return
+    var output = [];
+    blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
+    blacklist.forEach(function(rule){
+        rule = "**" + path.sep + rule;
+        files.forEach( function(name){
+            var matchname = path.join(prefix, name);
+            if( !~output.indexOf(name) && (path.extname(name) === '' || !minimatch(matchname, rule)) )
+                output.push(name);
+        }) 
+    });
+    return output;
+}
+
 function populate(dirname, options){
 	if(!fs) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
 	var proxy = {},
-		toString = options.output.toLowerCase() === "string",
-		toArray = options.output.toLowerCase() === "array",
+		toString = options.output && options.output.toLowerCase() === "string",
+		toArray = options.output && options.output.toLowerCase() === "array",
 		returnMe,
 		existingProps = [],
 		newdirname,
@@ -95,7 +126,7 @@ function populate(dirname, options){
 	}else if(toArray){
 		returnMe = [];
 	}else{
-		returnMe = curry.bind( "curried", proxy ),	
+		returnMe = curry.bind( "curried", proxy );
 	}
 
     try{
@@ -110,7 +141,11 @@ function populate(dirname, options){
     }catch(err){}
 
 	function recurs(thisDir){
-		fs.readdirSync(thisDir).forEach(function(filename){
+		var files = fs.readdirSync(thisDir);
+        if(options.whitelist) files = whitelist(options.whitelist, files, thisDir)
+        if(options.blacklist) files = blacklist(options.blacklist, files, thisDir)
+
+		files.forEach(function(filename){
 			var ext = path.extname(filename),
 				isJs = (ext === ".js" || ext === ".json"),
 				isDir = ext === '',
@@ -122,10 +157,6 @@ function populate(dirname, options){
 				if(options.recursive) recurs(filepath);
 				return
 			}
-
-			if( (options.whitelist && !checkList(options.whitelist, filename))
-			  || (options.blacklist && checkList(options.blacklist, filename)) )
-				return;
 
 			if( toString ){
 				returnMe += fs.readFileSync(filepath, "utf-8");					
@@ -164,6 +195,7 @@ function evaluate(srcObj, args, options){
 		returnObj = curry.bind( "curried", proxy, args);
 	else
 		returnObj = curry.bind( "curried", proxy);
+
 	for(var prop in srcObj){
 
 		if(options.whitelist && !checkList(options.whitelist, prop))
