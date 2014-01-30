@@ -14,7 +14,7 @@ module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
     var data = '';
     var curryNames = {};
-    var vars = [ '__filename', '__dirname' ];
+    var vars = [ '__dirname' ];
     var dirname = path.dirname(file);
     var pending = 0;
 
@@ -72,13 +72,14 @@ module.exports = function (file) {
                 
                 var thisDir = unparse(args[0]),
                     thisDirParsed = eval(thisDir),
-                    fpath = path.normalize( Function(vars, 'return ' + thisDir)(file, dirname) ),
+                    fpath = path.normalize( Function(vars, 'return ' + thisDir)(dirname) ),
                     thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
                     obj = "",
                     existingProps = [],
                     separator,
                     resolved,
-                    parts;
+                    parts,
+                    files = [];
 
                 if(typeof thisOpts !== "object"){
                     return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
@@ -112,53 +113,55 @@ module.exports = function (file) {
                 }
 
                 function recurs(dirname2){
-                    var files = fs.readdirSync(dirname2);
-
-                    if(thisOpts.whitelist) files = whitelist(thisOpts.whitelist, files, dirname2)
-                    if(thisOpts.blacklist) files = blacklist(thisOpts.blacklist, files, dirname2)
-
-                    files.forEach(function(filename){
-                        var filepath = path.join(dirname2, filename),
-                            ext = path.extname(filename),
-                            name = path.basename(filename, ext),
-                            isJs = ext === ".js" || ext === ".json",
-                            isDir = ext === '',
-                            propname;
-
-                        if(isDir){
-                            if(thisOpts.recursive) recurs(filepath);
-                            return
-                        }
-
-                        if( toString ){
-                            obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
-                            return
-                        }
-
-                        if( toArray ){
-                            obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
-                            return
-                        }
-
-                        if((isJs && thisOpts.jsToString) || !isJs)
-                            toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
-                        else
-                            toRequire = "require("+JSON.stringify(filepath)+")";
-
-                        if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
-                            propname = JSON.stringify(name);
-                        else
-                            propname = JSON.stringify(filename);
-
-                        if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
-                            propname = filepath;
-                        else
-                            existingProps.push(propname);                            
-
-                        obj += "returnMe[" + propname + "] = " + "proxy[" + propname + "] = " + toRequire + ";";
+                    fs.readdirSync(dirname2).forEach(function(file){
+                        var filepath = path.join( dirname2, file);
+                        if(path.extname(file) === ''){
+                          if(thisOpts.recursive) recurs(filepath);
+                          return  
+                        } 
+                        files.push(filepath);
                     });
                 }
                 recurs(fpath);
+
+                if(thisOpts.whitelist) files = whitelist(thisOpts.whitelist, files, path.resolve(fpath) );
+                if(thisOpts.blacklist) files = blacklist(thisOpts.blacklist, files, path.resolve(fpath) );
+
+                files.forEach(function(filepath){
+                    var ext = path.extname(filepath),
+                        name = path.basename(filepath, ext),
+                        filename = name + '.' + ext,
+                        isJs = ext === ".js" || ext === ".json",
+                        propname;
+
+                    if( toString ){
+                        obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
+                        return
+                    }
+
+                    if( toArray ){
+                        obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
+                        return
+                    }
+
+                    if((isJs && thisOpts.jsToString) || !isJs)
+                        toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
+                    else
+                        toRequire = "require("+JSON.stringify(filepath)+")";
+
+                    if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
+                        propname = JSON.stringify(name);
+                    else
+                        propname = JSON.stringify(filename);
+
+                    if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
+                        propname = filepath;
+                    else
+                        existingProps.push(propname);                            
+
+                    obj += "returnMe[" + propname + "] = " + "proxy[" + propname + "] = " + toRequire + ";";
+                });
+                
                 obj += "return returnMe;})())";
                 node.update(obj);
             }
@@ -172,35 +175,33 @@ module.exports = function (file) {
         return node.callee.type === 'Identifier' && curryNames[node.callee.name];
     }
 
-    function whitelist(whitelist, files, prefix){
+    function whitelist(whitelist, files, rootdir){
         if(!whitelist || !files) return
         var output = [];
         whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
         whitelist.forEach(function(rule){
-            rule = "**" + path.sep + rule;
+            rule = path.join( rootdir, rule );
             files.forEach( function(name){
                 if(~output.indexOf(name)) return
-                var matchname = path.join(prefix, name);
-                if( path.extname(name) === '' || minimatch(matchname, rule) )
+                if( minimatch(name, rule) )
                     output.push(name);
             }) 
         });
         return output;
     }
 
-    function blacklist(blacklist, files, prefix){
+    function blacklist(blacklist, files, rootdir){
         if(!blacklist || !files) return
-        var output = [];
         blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
-        blacklist.forEach(function(rule){
-            rule = "**" + path.sep + rule;
-            files.forEach( function(name){
-                var matchname = path.join(prefix, name);
-                if( !~output.indexOf(name) && (path.extname(name) === '' || !minimatch(matchname, rule)) )
-                    output.push(name);
-            }) 
+        console.log(files)
+        files = files.filter(function(name){
+            return !blacklist.some(function(rule){
+                rule = path.join( rootdir, rule );
+                return minimatch(name, rule);
+            });
         });
-        return output;
+        console.log(files)
+        return files
     }
 };
 

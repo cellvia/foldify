@@ -74,40 +74,35 @@ function curry(toBeCurried){
 function checkList(list, name){
 	list = util.isArray(list) ? list : [list];
 	return list.some(function(rule){
-		rule = "**" + path.sep + rule;
 		return minimatch(name, rule);
 	});
 }
 
-function whitelist(whitelist, files, prefix){
+function whitelist(whitelist, files, rootdir){
     if(!whitelist || !files) return
     var output = [];
     whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
     whitelist.forEach(function(rule){
-        rule = "**" + path.sep + rule;
+        rule = path.join( rootdir, rule );
         files.forEach( function(name){
             if(~output.indexOf(name)) return
-            var matchname = path.join(prefix, name);
-            if( minimatch(matchname, rule) )
+            if( minimatch(name, rule) )
                 output.push(name);
         }) 
     });
     return output;
 }
 
-function blacklist(blacklist, files, prefix){
+function blacklist(blacklist, files, rootdir){
     if(!blacklist || !files) return
-    var output = [];
     blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
-    blacklist.forEach(function(rule){
-        rule = "**" + path.sep + rule;
-        files.forEach( function(name){
-            var matchname = path.join(prefix, name);
-            if( !~output.indexOf(name) && (path.extname(name) === '' || !minimatch(matchname, rule)) )
-                output.push(name);
-        }) 
+
+    return files.filter(function(name){
+        return !blacklist.some(function(rule){
+            rule = path.join( rootdir, rule );
+            return minimatch(name, rule)
+        });
     });
-    return output;
 }
 
 function populate(dirname, options){
@@ -119,7 +114,8 @@ function populate(dirname, options){
 		existingProps = [],
 		newdirname,
 		separator,
-		parts;
+		parts,
+		files = [];
 
 	if(toString){
 		returnMe = "";
@@ -140,52 +136,57 @@ function populate(dirname, options){
         dirname = newdirname + path.sep + parts.slice(1).join(path.sep);
     }catch(err){}
 
-	function recurs(thisDir){
-		var files = fs.readdirSync(thisDir);
-        if(options.whitelist) files = whitelist(options.whitelist, files, thisDir)
-        if(options.blacklist) files = blacklist(options.blacklist, files, thisDir)
 
-		files.forEach(function(filename){
-			var ext = path.extname(filename),
-				isJs = (ext === ".js" || ext === ".json"),
-				isDir = ext === '',
-				name = path.basename(filename, ext),
-				filepath = path.join(thisDir, filename),
-				propname;
+    function recurs(thisDir){
+        fs.readdirSync(thisDir).forEach(function(file){
+            var filepath = path.join( thisDir, file);
+            if(path.extname(file) === ''){
+              if(options.recursive) recurs(filepath);
+              return  
+            } 
+            files.push(filepath);
+        });
+    }
+    recurs(dirname);
 
-			if(isDir){
-				if(options.recursive) recurs(filepath);
-				return
-			}
+    if(options.whitelist) files = whitelist(options.whitelist, files, path.resolve(dirname))
+    if(options.blacklist) files = blacklist(options.blacklist, files, path.resolve(dirname))
 
-			if( toString ){
-				returnMe += fs.readFileSync(filepath, "utf-8");					
-				return
-			}
+	files.forEach(function(filepath){
+		var ext = path.extname(filepath),
+			name = path.basename(filepath, ext),
+			filename = name + '.' + ext,
+			isJs = (ext === ".js" || ext === ".json"),
+			isDir = ext === '',
+			propname;
 
-			if( toArray ){
-				returnMe.push( fs.readFileSync(filepath, "utf-8") );
-				return
-			}
+		if( toString ){
+			returnMe += fs.readFileSync(filepath, "utf-8");					
+			return
+		}
 
-			if(!options.includeExt && (isJs || options.includeExt === false) )
-				propname = name;
-			else
-				propname = filename;
+		if( toArray ){
+			returnMe.push( fs.readFileSync(filepath, "utf-8") );
+			return
+		}
 
-	        if(options.fullPath || ~existingProps.indexOf(propname))
-	            propname = filepath;
-	        else
-	            existingProps.push(propname);                            
+		if(!options.includeExt && (isJs || options.includeExt === false) )
+			propname = name;
+		else
+			propname = filename;
 
-			if((isJs && options.jsToString) || !isJs )
-				returnMe[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
-			else
-				returnMe[propname] = proxy[propname] = require(filepath);
-			
-		});			
-	}
-	recurs(dirname);
+        if(options.fullPath || ~existingProps.indexOf(propname))
+            propname = filepath;
+        else
+            existingProps.push(propname);                            
+
+		if((isJs && options.jsToString) || !isJs )
+			returnMe[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
+		else
+			returnMe[propname] = proxy[propname] = require(filepath);
+		
+	});
+
 	return returnMe;
 }	
 
