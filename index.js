@@ -71,40 +71,6 @@ function curry(toBeCurried){
 
 };
 
-function checkList(list, name){
-	list = util.isArray(list) ? list : [list];
-	return list.some(function(rule){
-		return minimatch(name, rule);
-	});
-}
-
-function whitelist(whitelist, files, rootdir){
-    if(!whitelist || !files) return
-    var output = [];
-    whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
-    whitelist.forEach(function(rule){
-        rule = path.join( rootdir, rule );
-        files.forEach( function(name){
-            if(~output.indexOf(name)) return
-            if( minimatch(name, rule) )
-                output.push(name);
-        }) 
-    });
-    return output;
-}
-
-function blacklist(blacklist, files, rootdir){
-    if(!blacklist || !files) return
-    blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
-
-    return files.filter(function(name){
-        return !blacklist.some(function(rule){
-            rule = path.join( rootdir, rule );
-            return minimatch(name, rule)
-        });
-    });
-}
-
 function populate(dirname, options){
 	if(!fs) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
 	var proxy = {},
@@ -155,7 +121,7 @@ function populate(dirname, options){
 	files.forEach(function(filepath){
 		var ext = path.extname(filepath),
 			name = path.basename(filepath, ext),
-			filename = name + '.' + ext,
+			filename = name + ext,
 			isJs = (ext === ".js" || ext === ".json"),
 			isDir = ext === '',
 			propname;
@@ -198,19 +164,33 @@ function evaluate(srcObj, args, options){
 		returnObj = curry.bind( "curried", proxy);
 
 	for(var prop in srcObj){
-
-		if(options.whitelist && !checkList(options.whitelist, prop))
-			continue;
+		var isWhitelisted,
+			isBlacklisted,
+			skip;
+		if(options.whitelist && checkList(options.whitelist, prop))
+			isWhitelisted = true;
 
 		if(options.blacklist && checkList(options.blacklist, prop))
-			continue;
+			isBlacklisted = true;
+
+		skip = (options.whitelist && !isWhitelisted) || isBlacklisted;
+
+		if(options.trim && skip)
+			continue
 
 		node = srcObj[prop];
-		if(options.evaluate !== false && typeof node === "function")
-			returnObj[prop] = proxy[prop] = node.apply(srcObj, args)
-		else
-			returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
+		if(!skip){
+			if(options.evaluate !== false){
+				if( typeof node === "function" )
+					returnObj[prop] = proxy[prop] = node.apply(srcObj, args)
+			} else {
+				if( typeof node === "function" )
+					returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
+			}
+		}
 		
+		returnObj[prop] = proxy[prop] = proxy[prop] || node;
+
 		if(typeof proxy[prop] === "undefined" && !options.allowUndefined){
 			if(options.trim === true){
 				delete proxy[prop];
@@ -221,6 +201,40 @@ function evaluate(srcObj, args, options){
 		}
 	}
 	return returnObj;
+}
+
+function checkList(list, name){
+	list = util.isArray(list) ? list : [list];
+	return list.some(function(rule){
+		return minimatch(name, rule);
+	});
+}
+
+function whitelist(whitelist, files, rootdir){
+    if(!whitelist || !files) return
+    var output = [];
+    whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
+    whitelist.forEach(function(rule){
+        rule = path.join( rootdir, rule );
+        files.forEach( function(name){
+            if(~output.indexOf(name)) return
+            if( minimatch(name, rule) )
+                output.push(name);
+        }) 
+    });
+    return output;
+}
+
+function blacklist(blacklist, files, rootdir){
+    if(!blacklist || !files) return
+    blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
+
+    return files.filter(function(name){
+        return !blacklist.some(function(rule){
+            rule = path.join( rootdir, rule );
+            return minimatch(name, rule)
+        });
+    });
 }
 
 if (!Array.prototype.indexOf) {

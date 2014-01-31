@@ -3,7 +3,7 @@
     "name": "Brandon Selway"
   },
   "name": "curryFolder",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Curry all files in a folder",
   "main": "./index.js",
   "browserify-transform": "./transform.js",

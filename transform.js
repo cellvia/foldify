@@ -130,7 +130,7 @@ module.exports = function (file) {
                 files.forEach(function(filepath){
                     var ext = path.extname(filepath),
                         name = path.basename(filepath, ext),
-                        filename = name + '.' + ext,
+                        filename = name + ext,
                         isJs = ext === ".js" || ext === ".json",
                         propname;
 
