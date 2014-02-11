@@ -33,7 +33,7 @@ function curry(toBeCurried){
 		return curry.bind( "curried", mergeToMe );
 	}
 
-	var	beingCurried = this == "curried",
+	var	beingCurried = this && this.beingCurried,
 		isObj = typeof toBeCurried === "object" && !beingCurried,
 		isCurryObj = typeof toBeCurried === "object" && beingCurried,
 		isDir = typeof toBeCurried === "string",
@@ -63,7 +63,7 @@ function curry(toBeCurried){
 					continue
 				curry[name] = toBeCurried[name];
 			}
-			output = curry.bind( "curried", curry );
+			output = curry.bind( {beingCurried: true}, curry );
 		break;
 	}
 
@@ -81,6 +81,7 @@ function populate(dirname, options){
 		newdirname,
 		separator,
 		parts,
+		map = options.tree ? {} : false,
 		files = [];
 
 	if(toString){
@@ -88,7 +89,7 @@ function populate(dirname, options){
 	}else if(toArray){
 		returnMe = [];
 	}else{
-		returnMe = curry.bind( "curried", proxy );
+		returnMe = curry.bind( { beingCurried: true, map: map }, proxy );
 	}
 
     try{
@@ -107,10 +108,10 @@ function populate(dirname, options){
         fs.readdirSync(thisDir).forEach(function(file){
             var filepath = path.join( thisDir, file);
             if(path.extname(file) === ''){
-              if(options.recursive) recurs(filepath);
+              if(options.recursive || options.tree) recurs(filepath);
               return  
             } 
-            files.push(filepath);
+            files.push(filepath);        		
         });
     }
     recurs(dirname);
@@ -124,7 +125,9 @@ function populate(dirname, options){
 			filename = name + ext,
 			isJs = (ext === ".js" || ext === ".json"),
 			isDir = ext === '',
-			propname;
+			propname,
+			add,
+			last = false;
 
 		if( toString ){
 			returnMe += fs.readFileSync(filepath, "utf-8");					
@@ -143,63 +146,106 @@ function populate(dirname, options){
 
         if(options.fullPath || ~existingProps.indexOf(propname))
             propname = filepath;
-        else
+        else if(!options.tree)
             existingProps.push(propname);                            
 
 		if((isJs && options.jsToString) || !isJs )
-			returnMe[propname] = proxy[propname] = fs.readFileSync(filepath, "utf-8");					
+			add = fs.readFileSync(filepath, "utf-8");
 		else
-			returnMe[propname] = proxy[propname] = require(filepath);
+			add = require(filepath);
+
+		if(map){
+			var paths = path.relative(dirname, filepath).split(path.sep);
+			var last, thismap;
+			for(var x = 0, len = paths.length; x<len; x++){
+				if(x===0){
+					if(!returnMe[ paths[x] ] )
+						returnMe[ paths[x] ] = {};
+					last = returnMe[ paths[x] ]
+					if(!map[ paths[x] ] )
+						map[ paths[x] ] = {};
+					thismap = map[ paths[x] ]
+				}else if(x < (len-1)){
+					if(!last[ paths[x] ] )
+						last[ paths[x] ] = {};
+					last = last[paths[x]];
+					if(!thismap[ paths[x] ] )
+						thismap[ paths[x] ] = {};
+					thismap = thismap[ paths[x] ];
+				}else{
+					last[ paths[x] ] = add;
+					thismap[ paths[x] ] = true;
+				}
+			}
+		}else{
+			returnMe[propname] = add;
+		}
 		
 	});
 
+	for(var p in returnMe) proxy[p] = returnMe[p];
 	return returnMe;
 }	
 
 function evaluate(srcObj, args, options){
-	var proxy = {}, node, isWhitelisted, isBlacklisted;
+	var proxy = {}, returnObj;
 	if(options.evaluate === false)
-		returnObj = curry.bind( "curried", proxy, args);
+		returnObj = curry.bind( this, proxy, args );
 	else
-		returnObj = curry.bind( "curried", proxy);
+		returnObj = curry.bind( this, proxy );
 
-	for(var prop in srcObj){
+	var objpaths = flatten.call(this.map, srcObj);
+
+	for(var objpath in objpaths){
 		var isWhitelisted,
 			isBlacklisted,
-			skip;
-		if(options.whitelist && checkList(options.whitelist, prop))
+			skip,
+			add,
+			node;
+
+		if(options.whitelist && checkList(options.whitelist, objpath))
 			isWhitelisted = true;
 
-		if(options.blacklist && checkList(options.blacklist, prop))
+		if(options.blacklist && checkList(options.blacklist, objpath))
 			isBlacklisted = true;
 
 		skip = (options.whitelist && !isWhitelisted) || isBlacklisted;
 
-		if(options.trim && skip)
+		if(skip && options.trim) continue;
+
+		add = node = objpaths[objpath];
+
+		if(!skip && typeof node === "function")
+			add = options.evaluate !== false ? node.apply( srcObj, args) : node.bind( srcObj, args );					
+		
+		if(typeof add === "undefined" && options.allowUndefined !== true && options.trim)
 			continue
 
-		node = srcObj[prop];
-		if(!skip){
-			if(options.evaluate !== false){
-				if( typeof node === "function" )
-					returnObj[prop] = proxy[prop] = node.apply(srcObj, args)
-			} else {
-				if( typeof node === "function" )
-					returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
-			}
-		}
-		
-		returnObj[prop] = proxy[prop] = proxy[prop] || node;
+		if(typeof add === "undefined" && options.allowUndefined !== true)
+			add = node
 
-		if(typeof proxy[prop] === "undefined" && !options.allowUndefined){
-			if(options.trim === true){
-				delete proxy[prop];
-				delete returnObj[prop];				
-			}else{
-				returnObj[prop] = proxy[prop] = node.bind( srcObj, args);
-			}
+		if(this.map){
+			var last, paths = objpath.split(path.sep);
+			for(var x = 0, len = paths.length; x<len; x++){
+				if(x===0){
+					if(!returnObj[ paths[x] ] )
+						returnObj[ paths[x] ] = {};
+					last = returnObj[ paths[x] ]
+				}else if(x < (len-1)){
+					if(!last[ paths[x] ] )
+						last[ paths[x] ] = {};
+					last = last[paths[x]];
+				}else{
+					last[ paths[x] ] = add;
+				}
+			}			
+		}else{
+			returnObj[objpath] = add;
 		}
-	}
+
+	};
+
+	for(var p in returnObj) proxy[p] = returnObj[p];
 	return returnObj;
 }
 
@@ -215,7 +261,7 @@ function whitelist(whitelist, files, rootdir){
     var output = [];
     whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
     whitelist.forEach(function(rule){
-        rule = path.join( rootdir, rule );
+        if(rootdir) rule = path.join( rootdir, rule );
         files.forEach( function(name){
             if(~output.indexOf(name)) return
             if( minimatch(name, rule) )
@@ -231,11 +277,27 @@ function blacklist(blacklist, files, rootdir){
 
     return files.filter(function(name){
         return !blacklist.some(function(rule){
-            rule = path.join( rootdir, rule );
+            if(rootdir) rule = path.join( rootdir, rule );
             return minimatch(name, rule)
         });
     });
 }
+
+function flatten(obj, _path, result) {
+  var key, val, __path;
+  _path = _path || [];
+  result = result || {};
+  for (key in obj) {
+    val = obj[key];
+    __path = _path.concat([key]);
+    if (this[key] && this[key] !== true) {
+      flatten.call(this[key], val, __path, result);
+    } else {
+      result[__path.join(path.sep)] = val;
+    }
+  }
+  return result;
+};
 
 if (!Array.prototype.indexOf) {
     Array.prototype.indexOf = function (searchElement, fromIndex) {
