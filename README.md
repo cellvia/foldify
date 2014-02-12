@@ -1,11 +1,9 @@
+# curryFolder
+Import / require folder(s) of any type of files, and evaluate / curry the results.
+
 [![browser support](http://ci.testling.com/cellvia/curryFolder.png)](http://ci.testling.com/cellvia/curryFolder)
 
 [![build status](https://secure.travis-ci.org/cellvia/curryFolder.png)](http://travis-ci.org/cellvia/curryFolder)
-
-
-# curryFolder
-
-Import / require folder(s) of any type of files, and evaluate / curry the results.
 
 ## Features
 

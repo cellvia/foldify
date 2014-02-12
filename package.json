@@ -6,7 +6,7 @@
   },
   "name": "curryFolder",
   "version": "0.5",
-  "description": "Import, require, or curry all files in a folder",
+  "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {
     "through": "~2.3.4",
