@@ -122,15 +122,16 @@ module.exports = function (file) {
                 else if(toArray){
                     obj+= "var returnMe = [];";
                 }else{
-                    obj+= "var curry = require("+JSON.stringify(curryFolderLocation)+"), proxy = {};";
-                    obj+= "var returnMe = curry.bind({curryStatus: true}, proxy);";
+                    obj+= "var curry = require("+JSON.stringify(curryFolderLocation)+"), proxy = {}, map = false;";
+                    obj+= thisOpts.tree ? "map = {};" : "";
+                    obj+= "var returnMe = curry.bind({curryStatus: true, map: map}, proxy);";
                 }
 
                 function recurs(dirname2){
                     fs.readdirSync(dirname2).forEach(function(file){
                         var filepath = path.join( dirname2, file);
                         if(path.extname(file) === ''){
-                          if(thisOpts.recursive) recurs(filepath);
+                          if(thisOpts.recursive || thisOpts.tree) recurs(filepath);
                           return  
                         } 
                         files.push(filepath);
@@ -173,7 +174,34 @@ module.exports = function (file) {
                     else
                         existingProps.push(propname);                            
 
-                    obj += "returnMe[" + propname + "] = " + toRequire + ";";
+                    if(thisOpts.tree){
+                        var paths = path.relative(fpath, filepath).split(path.sep);
+                        obj+="var paths = " + JSON.stringify(paths) + ";";
+                        obj+="var last, thismap;";
+                        obj+="for(var x = 0, len = paths.length; x<len; x++){";
+                            obj+="if(x===0){";
+                                obj+="if(!returnMe[ paths[x] ] )";
+                                    obj+="returnMe[ paths[x] ] = {};";
+                                obj+="last = returnMe[ paths[x] ];";
+                                obj+="if(!map[ paths[x] ] )";
+                                    obj+="map[ paths[x] ] = {};";
+                                obj+="thismap = map[ paths[x] ]";
+                            obj+="}else if(x < (len-1)){";
+                                obj+="if(!last[ paths[x] ] )";
+                                    obj+="last[ paths[x] ] = {};";
+                                obj+="last = last[paths[x]];";
+                                obj+="if(!thismap[ paths[x] ] )";
+                                    obj+="thismap[ paths[x] ] = {};";
+                                obj+="thismap = thismap[ paths[x] ];";
+                            obj+="}else{";
+                                obj+="last[ " + propname + " ] = " + toRequire + ";";
+                                obj+="thismap[ " + propname + " ] = true;";
+                            obj+="}";
+                        obj+="}";
+                    }else{
+                        obj += "returnMe[" + propname + "] = " + toRequire + ";";                    
+                    }
+
                 });
                 
                 if(!toString && !toArray)

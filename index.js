@@ -30,7 +30,7 @@ function curry(toBeCurried){
 	          mergeToMe[prop] = individual[prop];
 	        }
 		});
-		return curry.bind( "curried", mergeToMe );
+		return curry.bind( {curryStatus: true}, mergeToMe );
 	}
 
 	var	beingCurried = this && this.curryStatus,

@@ -9,7 +9,6 @@ test('tree - structure', function(t){
 	t.plan(1);
 
 	var tree = curryFolder(__dirname + '/files', {tree: true, includeExt: true} );
-
 	var res = !!(tree.html["html_file1.html"] && tree.html["html_file2.html"] && tree.html["html_file3.html"]
 				&& tree.js.jsone["jsone_file1.js"] && tree.js.jsone["jsone_file2.js"] && tree.js.jsone["jsone_file3.js"] 
 				&& tree.js["js_file1.js"]

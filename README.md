@@ -1,3 +1,8 @@
+[![browser support](http://ci.testling.com/cellvia/curryFolder.png)](http://ci.testling.com/cellvia/curryFolder)
+
+[![build status](https://secure.travis-ci.org/cellvia/curryFolder.png)](http://travis-ci.org/cellvia/curryFolder)
+
+
 # curryFolder
 
 Import / require folder(s) of any type of files, and evaluate / curry the results.
@@ -5,16 +10,16 @@ Import / require folder(s) of any type of files, and evaluate / curry the result
 ## Features
 
 ###completed:
-server side and client side support (via supplied browserify transform)  
+has server side and client side support (via supplied browserify transform)  
+can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
 can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
-functional (continuously returns itself as a function, endlessly iterable)  
-whitelist / blacklist files or properties at each iteration  
-compatible with for...in (no additional hidden properties or prototype to sort through)
+is functional (continuously returns itself as a function, endlessly iterable)  
+can whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
+compatible with for...in (no prototype properties to sort through)
+tests in both server and browser
 
 ###yet to be completed:
-return a tree instead of flat literal, based on folder structure  
-ability to wrap a function around results  
-tests >_<
+ability to wrap a function around results
 
 ## Usage
 
@@ -26,17 +31,17 @@ When the hash is initialized the result is a function object with properties who
 
 Note: `.js` and `.json` files are `require()`'d into the hash, while all other files are `fs.readFileSync()`'d.  
 
-Will return something like:
+Hash is something like:
 ```javascript
-{ 	filename: require("filename.js"), 
-	filename2: fs.readFileSync("filename.html") }
+{ 	filename: require("./filename.js"), 
+	filename2: fs.readFileSync("./filename.html") }
 ```
 
 ### curryFolder( dirname, [options] );
 
-**dirname** may be a path to a folder, node module, node module subdir path (ex: "curryFolder/test"), object, or array of any of these.
+**dirname** may be a path to a folder, node module, node module subdir path (ex: "curryFolder/test"), object, or array of any of these.  In the case of an object, it is simply returned wrapped with the curryFolder functionality.
 
-In the case of an object, it is simply returned wrapped with the curryFolder functionality.
+**NOTE:** in the browser, **dirname** may not be dynamic, except for **__dirname** which does get parsed. ex: `curryFolder(__dirname + '/files')` will work while `curryFolder(path.join(__dirname, 'files'))` will not.
 
 ```javascript
 var curryFolder = require("curryFolder");
@@ -66,9 +71,15 @@ for(var controllerName in errorControllers){
 
 ## Initialization Options
 
+**NOTE:** due to browserify limitations, clientside initialization option properties may NOT be dynamically assigned, and must occur inline.
+
 ### recursive (default: false) 
 
 Include subfolders.
+
+### tree (default: false)
+
+Include subfolders, and return hierarchical structure based on filepath.
 
 ### output (default: "object")
 
@@ -84,7 +95,6 @@ var curryFolder = require("curryFolder");
 var stylesAndHtml = curryFolder(__dirname + "/client", {whitelist: ["*.less, *.html"], recursive: true});
 //will grab all .less and .html files into hash, as strings
 ```
-NOTE: due to browserify limitations, in clientside code option properties may not be dynamically assigned, and must occur inline.
 
 ### blacklist
 
@@ -96,7 +106,6 @@ var curryFolder = require("curryFolder");
 var templates = curryFolder(__dirname + "/templates", {blacklist: ".json", recursive: true});
 //will grab all files EXCEPT .json files
 ```
-NOTE: due to browserify limitations, in clientside code option properties may not be dynamically assigned, and must occur inline.
 
 ### includeExt
 
@@ -157,6 +166,8 @@ routes(app, {whitelist: "a*"} );
 ```
 If **trim** option is set, returned function object will have non-whitelisted properties removed.
 
+If hash is **tree** structure, whitelist rules should use `/` as a delimiter for properties.  for ex: `{whitelist: "path/to/property/**"}`
+
 ### blacklist
 
 Accepts string or array.  
@@ -169,6 +180,8 @@ routes(app, {blacklist: "a*"} );
 //connects routes except those beginning with "a"
 ```
 If **trim** option is set, returned function object will have blacklisted properties removed.
+
+If hash is **tree** structure, blacklist rules should use `/` as a delimiter for properties.  for ex: `{blacklist: "path/to/property/**"}`
 
 ### evaluate (default: true)
 
@@ -237,3 +250,9 @@ typeof curried3.mathFunc // undefined
 curried3()
 //currying or evaluating further will continue to produce `undefined`
 ```
+
+## Testing
+
+Run `npm install` then `npm test` to test server code.
+
+To test in browser please install [browserify](https://github.com/substack/browserify) and [testling](https://github.com/substack/testling) globally, and then run `npm run browser-test` in the root dir of this module.

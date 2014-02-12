@@ -1,12 +1,13 @@
 {
   "author": {
-    "name": "Brandon Selway"
+    "name": "Brandon Selway",
+    "email": "brandon.selway@gmail.com",
+    "url": "http://cellvia.github.io"
   },
   "name": "curryFolder",
-  "version": "0.4.3",
-  "description": "Curry all files in a folder",
+  "version": "0.5",
+  "description": "Import, require, or curry all files in a folder",
   "main": "./index.js",
-  "browserify-transform": "./transform.js",
   "dependencies": {
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
@@ -16,11 +17,16 @@
   "devDependencies": {
     "tape": "~2.3.2"
   },
+  "repository": {
+      "type": "git",
+      "url": "git://github.com/cellvia/curryFolder.git"
+  },
   "scripts": {
     "test": "tape test/*.js",
-    "browser": "browserify -t ./transform.js ./test/browser/browser.js -o ./test/browser/test.js && testling -u"
+    "browser-test": "browserify -t ./transform.js ./test/browser/browser.js -o ./test/browser/test.js && testling -u"
   },
   "testling": {
     "scripts": "./test/browser/test.js"
-  }
+  },
+  "license": "MIT"
 }
