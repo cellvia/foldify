@@ -16,7 +16,7 @@ module.exports = function (file) {
     var vars = [ '__dirname' ];
     var dirname = path.dirname(file);
     var pending = 0;
-    var curryFolderLocation = ~dirname.indexOf(path.join('curryFolder', 'test')) ? '../' : 'curryFolder';
+    var foldifyLocation = ~dirname.indexOf(path.join('foldify', 'test')) ? '../' : 'foldify';
 
     var tr = through(write, end);
     return tr;
@@ -59,13 +59,13 @@ module.exports = function (file) {
             var args = node.arguments;
             var check;
             if(isRequire(node)){
-                if(args[0] && args[0].value === 'curryFolder'){
+                if(args[0] && args[0].value === 'foldify'){
                     check = true;
                 }else if(args[0]){
                     try{
                         check = require.resolve(dirname + '/' + eval(unparse(args[0])));
                         check = check.split(path.sep);
-                        var check2 = check.slice(check.indexOf("curryFolder")+1)                        
+                        var check2 = check.slice(check.indexOf("foldify")+1)                        
                         check = check2.length === 1;
                     }catch(e){}
                 }
@@ -96,7 +96,7 @@ module.exports = function (file) {
                     files = [];
 
                 if(typeof thisOpts !== "object"){
-                    return tr.emit('error', 'curryFolder (browserify) second argument must be an options object');
+                    return tr.emit('error', 'foldify (browserify) second argument must be an options object');
                 }
 
                 var toString = thisOpts.output && thisOpts.output.toLowerCase() === "string",
@@ -122,7 +122,7 @@ module.exports = function (file) {
                 else if(toArray){
                     obj+= "var returnMe = [];";
                 }else{
-                    obj+= "var curry = require("+JSON.stringify(curryFolderLocation)+"), proxy = {}, map = false;";
+                    obj+= "var curry = require("+JSON.stringify(foldifyLocation)+"), proxy = {}, map = false;";
                     obj+= thisOpts.tree ? "map = {};" : "";
                     obj+= "var returnMe = curry.bind({curryStatus: true, map: map}, proxy);";
                 }

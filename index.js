@@ -3,9 +3,9 @@ var fs = require('fs'),
 	util = require('util'),
 	minimatch = require('minimatch');
 
-module.exports = curry;
+module.exports = fold;
 
-function curry(toBeCurried){
+function fold(toBeCurried){
 	if(!toBeCurried) return false;
 	var moreArgs = [].slice.call(arguments, 1),
 		mergeToMe = {},
@@ -17,11 +17,11 @@ function curry(toBeCurried){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
 		toBeCurried.forEach(function(toCurry){
-			individual = curry.call(this, toCurry, options)
+			individual = fold.call(this, toCurry, options)
 			for(var prop in individual){
 				if(mergeToMe[prop]){
 					options.fullPath = true;
-					individual = curry.call(this, toCurry, options);
+					individual = fold.call(this, toCurry, options);
 					options.fullPath = originalFullPath;
 					break;
 				}
@@ -30,10 +30,10 @@ function curry(toBeCurried){
 	          mergeToMe[prop] = individual[prop];
 	        }
 		});
-		return curry.bind( {curryStatus: true}, mergeToMe );
+		return fold.bind( {foldStatus: true}, mergeToMe );
 	}
 
-	var	beingCurried = this && this.curryStatus,
+	var	beingCurried = this && this.foldStatus,
 		isObj = typeof toBeCurried === "object" && !beingCurried,
 		isCurryObj = typeof toBeCurried === "object" && beingCurried,
 		isDir = typeof toBeCurried === "string",
@@ -49,7 +49,7 @@ function curry(toBeCurried){
 		case !isCurryObj:
 			args = moreArgs[0] || [];
 			args = util.isArray(args) ? args : [args]
-			if(this.curryStatus === "curryOnly"){
+			if(this.foldStatus === "foldOnly"){
 				args2 = moreArgs[1] || [];
 				args2 = util.isArray(args2) ? args2 : [args2]
 				args = args.concat(args2);
@@ -65,9 +65,9 @@ function curry(toBeCurried){
 				if( (options.whitelist && !checkList(options.whitelist, name))
 				  || (options.blacklist && checkList(options.blacklist, name)) )
 					continue
-				curry[name] = toBeCurried[name];
+				fold[name] = toBeCurried[name];
 			}
-			output = curry.bind( {curryStatus: true}, curry );
+			output = fold.bind( {foldStatus: true}, fold );
 		break;
 	}
 
@@ -76,7 +76,7 @@ function curry(toBeCurried){
 };
 
 function populate(dirname, options){
-	if(!fs.readdirSync) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
+	if(!fs.readdirSync) throw "you must run the foldFolder browserify transform (foldFolder/transform.js) for foldFolder to work in the browser!";
 	var proxy = {},
 		toString = options.output && options.output.toLowerCase() === "string",
 		toArray = options.output && options.output.toLowerCase() === "array",
@@ -93,7 +93,7 @@ function populate(dirname, options){
 	}else if(toArray){
 		returnMe = [];
 	}else{
-		returnMe = curry.bind( { curryStatus: true, map: map }, proxy );
+		returnMe = fold.bind( { foldStatus: true, map: map }, proxy );
 	}
 
     try{
@@ -196,11 +196,11 @@ function populate(dirname, options){
 function evaluate(srcObj, args, options){
 	var proxy = {}, returnObj;
 	if(options.evaluate === false){
-		this.curryStatus = "curryOnly";
-		returnObj = Function.prototype.bind.apply( curry, [this, proxy].concat([args]) );
+		this.foldStatus = "foldOnly";
+		returnObj = Function.prototype.bind.apply( fold, [this, proxy].concat([args]) );
 	}
 	else
-		returnObj = curry.bind( this, proxy );
+		returnObj = fold.bind( this, proxy );
 
 	var objpaths = flatten.call(this.map, srcObj);
 

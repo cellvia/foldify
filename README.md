@@ -1,13 +1,15 @@
-# curryFolder
-Import / require folder(s) of any type of files, and evaluate / curry the results.
+# foldify
+Fold your folders, any way you like.
 
-[![browser support](http://ci.testling.com/cellvia/curryFolder.png)](http://ci.testling.com/cellvia/curryFolder)
+Import / require folders of any types of files, and evaluate / curry the results.
 
-[![build status](https://secure.travis-ci.org/cellvia/curryFolder.png)](http://travis-ci.org/cellvia/curryFolder)
+[![browser support](http://ci.testling.com/cellvia/foldify.png)](http://ci.testling.com/cellvia/foldify)
+
+[![build status](https://secure.travis-ci.org/cellvia/foldify.png)](http://travis-ci.org/cellvia/foldify)
 
 ```javascript
-var curryFolder = require("curryFolder");
-var routes = curryFolder(__dirname + "/lib/routes", {tree: true});
+var foldify = require("foldify");
+var routes = foldify(__dirname + "/lib/routes", {tree: true});
 
 // routes.errors.500:  function(app){ app.get(...) }
 // routes.errors.501:  function(app){ app.get(...) }
@@ -15,11 +17,13 @@ var routes = curryFolder(__dirname + "/lib/routes", {tree: true});
 // routes.user.login:  function(app){ app.get(...) }
 // routes.user.logout: function(app){ app.get(...) }
 
-routes(app);
-//all are attached!
+routes(app, {whitelist: "errors/**"});
+//errors are now attached!
 
+routes(app, {blacklist: "errors/**"});
+//all routes are now attached!
 ```
-Clientside supported as well :-)
+Clientside folding supported as well :-)
 
 ## Features
 
@@ -27,8 +31,8 @@ Clientside supported as well :-)
 server side and client side support (via supplied browserify transform)  
 can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
 can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
-is functional (continuously returns itself as a function, endlessly iterable)  
-can whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
+can be folded endlessly
+whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
 compatible with for...in (no prototype properties to sort through)
 tests in both server and browser
 
@@ -37,7 +41,7 @@ ability to wrap a function around results
 
 ## Usage
 
-There are two steps to usage.  First you must *initialize the hash*, by running curryFolder upon a directory name, an object, or an array of these.  The provided object is useful in itself, but you can then *evaluate the hash* with provided arguments, or just curry them in.  These steps take slightly different options, but both allow whitelisting/blacklisting of filenames/properties.
+There are two steps to usage.  First you must *initialize the hash*, by running foldify upon a directory name, an object, or an array of these.  The provided object is useful in itself, but you can then *evaluate the hash* with provided arguments, or just curry them in.  These steps take slightly different options, but both allow whitelisting/blacklisting of filenames/properties.
 
 ## Initializing the hash
 
@@ -51,16 +55,16 @@ Hash is something like:
 	filename2: fs.readFileSync("./filename.html") }
 ```
 
-### curryFolder( dirname, [options] );
+### foldify( dirname, [options] );
 
-**dirname** may be a path to a folder, node module, node module subdir path (ex: "curryFolder/test"), object, or array of any of these.  In the case of an object, it is simply returned wrapped with the curryFolder functionality.
+**dirname** may be a path to a folder, node module, node module subdir path (ex: "foldify/test"), object, or array of any of these.  In the case of an object, it is simply returned wrapped with the foldify functionality.
 
-**NOTE:** in the browser, **dirname** may not be dynamic, except for **__dirname** which does get parsed. ex: `curryFolder(__dirname + '/files')` will work while `curryFolder(path.join(__dirname, 'files'))` will not.
+**NOTE:** in the browser, **dirname** may not be dynamic, except for **__dirname** which does get parsed. ex: `foldify(__dirname + '/files')` will work while `foldify(path.join(__dirname, 'files'))` will not.
 
 ```javascript
-var curryFolder = require("curryFolder");
+var foldify = require("foldify");
 
-var errorControllers = curryFolder(__dirname + "/lib/controllers/errors");
+var errorControllers = foldify(__dirname + "/lib/controllers/errors");
 ```
 
 Even just this object can be useful:
@@ -105,8 +109,8 @@ Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon filepaths using supplied whitelist patterns, supplied rules are prefixed with the curried directory. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
-var curryFolder = require("curryFolder");
-var stylesAndHtml = curryFolder(__dirname + "/client", {whitelist: ["*.less, *.html"], recursive: true});
+var foldify = require("foldify");
+var stylesAndHtml = foldify(__dirname + "/client", {whitelist: ["*.less, *.html"], recursive: true});
 //will grab all .less and .html files into hash, as strings
 ```
 
@@ -116,8 +120,8 @@ Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon filepaths using supplied blacklist patterns.  Supplied rules are prefixed by the curried directory. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
-var curryFolder = require("curryFolder");
-var templates = curryFolder(__dirname + "/templates", {blacklist: ".json", recursive: true});
+var foldify = require("foldify");
+var templates = foldify(__dirname + "/templates", {blacklist: ".json", recursive: true});
 //will grab all files EXCEPT .json files
 ```
 
@@ -157,9 +161,9 @@ This represents the returned function object that is created after initializatio
 Following from the example above, to attach all routes to the same express app:
 ```javascript
 var app = express();
-var curryFolder = require("curryFolder");
+var foldify = require("foldify");
 
-var routes = curryFolder(__dirname + "/routes");
+var routes = foldify(__dirname + "/routes");
 
 routes(app);
 //all routes are attached!
@@ -173,8 +177,8 @@ Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon property names using supplied whitelist patterns. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
-var curryFolder = require("curryFolder");
-var routes = curryFolder(__dirname + "/routes");
+var foldify = require("foldify");
+var routes = foldify(__dirname + "/routes");
 routes(app, {whitelist: "a*"} );
 //only connects routes beginning with "a"
 ```
@@ -188,8 +192,8 @@ Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon property names using supplied blacklist patterns. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
-var curryFolder = require("curryFolder");
-var routes = curryFolder(__dirname + "/routes");
+var foldify = require("foldify");
+var routes = foldify(__dirname + "/routes");
 routes(app, {blacklist: "a*"} );
 //connects routes except those beginning with "a"
 ```
@@ -212,8 +216,8 @@ function sum(){
 ```
 
 ```javascript
-var curryFolder = require("curryFolder");
-var mathFuncs = curryFolder(__dirname + "/lib/mathFuncs");
+var foldify = require("foldify");
+var mathFuncs = foldify(__dirname + "/lib/mathFuncs");
 
 //To curry only, set 'evaluate' to false:
 var curried = mathFuncs(1, {evaluate: false});

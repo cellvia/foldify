@@ -4,8 +4,8 @@
     "email": "brandon.selway@gmail.com",
     "url": "http://cellvia.github.io"
   },
-  "name": "curryFolder",
-  "version": "0.5",
+  "name": "foldify",
+  "version": "0.5.0",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {
@@ -19,7 +19,7 @@
   },
   "repository": {
       "type": "git",
-      "url": "git://github.com/cellvia/curryFolder.git"
+      "url": "git://github.com/cellvia/foldify.git"
   },
   "scripts": {
     "test": "tape test/*.js",

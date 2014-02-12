@@ -1,7 +1,7 @@
 var test = require('tape');
 
-var curryFolder = require('../');
-var files = curryFolder(__dirname + '/files');
+var foldify = require('../');
+var files = foldify(__dirname + '/files');
 
 test('basic', function(t){
 	t.plan(1);
