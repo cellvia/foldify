@@ -8,7 +8,7 @@ test('whitelist - populate', function(t){
 
 	t.plan(1);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {whitelist: ["js/*.js", "js/jsone/jsone_file1.*"], recursive: true} );
+	var evaluate = curryFolder(__dirname + '/files', {whitelist: ["js/*.js", "js/jsone/jsone_file1.*"], recursive: true} );
 	var res = typeof evaluate["js_file1"]
 			 + typeof evaluate["jsone_file1"]
 			 + typeof evaluate["jsone_file2"]
@@ -26,7 +26,7 @@ test('whitelist - evaluate + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {recursive: true} );
+	var evaluate = curryFolder(__dirname + '/files', {recursive: true} );
 	t.equal(typeof evaluate["js_file1"], "function");
 
 	var evaluated = evaluate([1,2,3], {whitelist: "jsone_file*", trim: true});
@@ -59,7 +59,7 @@ test('whitelist - tree + trim', function(t){
 
 	t.plan(2);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {tree: true, whitelist: "js*/**"} );
+	var evaluate = curryFolder(__dirname + '/files', {tree: true, whitelist: "js*/**"} );
 	t.equal(typeof evaluate.json.jsonone["jsonone_file"], "object");
 
 	var evaluated = evaluate([1,2,3], {whitelist: ["**/js_file1", "js/**/*file*"], trim: true});

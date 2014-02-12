@@ -8,7 +8,6 @@ var unparse = require('escodegen').generate;
 var minimatch = require('minimatch');
 
 var bindShim = 'Function.prototype.bind||(Function.prototype.bind=function(a){if("function"!=typeof this)throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(this instanceof d&&a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});';
-var someShim = 'Array.prototype.some||(Array.prototype.some=function(a){"use strict";if(void 0===this||null===this)throw new TypeError;var b=Object(this),c=b.length>>>0;if("function"!=typeof a)throw new TypeError;for(var d=arguments.length>=2?arguments[1]:void 0,e=0;c>e;e++)if(e in b&&a.call(d,b[e],e,b))return!0;return!1});';
 
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
@@ -17,6 +16,7 @@ module.exports = function (file) {
     var vars = [ '__dirname' ];
     var dirname = path.dirname(file);
     var pending = 0;
+    var curryFolderLocation = ~dirname.indexOf(path.join('curryFolder', 'test')) ? '../' : 'curryFolder';
 
     var tr = through(write, end);
     return tr;
@@ -56,18 +56,32 @@ module.exports = function (file) {
     
     function parse () {
         var output = falafel(data, function (node) {
-            if (isRequire(node) && node.arguments[0].value === 'curryFolder'
+            var args = node.arguments;
+            var check;
+            if(isRequire(node)){
+                if(args[0] && args[0].value === 'curryFolder'){
+                    check = true;
+                }else if(args[0]){
+                    try{
+                        check = require.resolve(dirname + '/' + eval(unparse(args[0])));
+                        check = check.split(path.sep);
+                        var check2 = check.slice(check.indexOf("curryFolder")+1)                        
+                        check = check2.length === 1;
+                    }catch(e){}
+                }
+            }
+
+            if (isRequire(node) && check
             && node.parent.type === 'VariableDeclarator'
             && node.parent.id.type === 'Identifier') {
                 curryNames[node.parent.id.name] = true;
             }
-            if (isRequire(node) && node.arguments[0].value === 'curryFolder'
+            if (isRequire(node) && check
             && node.parent.type === 'AssignmentExpression'
             && node.parent.left.type === 'Identifier') {
                 curryNames[node.parent.left.name] = true;
             }
             
-            var args = node.arguments;
             if ( isCurry(node) && !containsUndefinedVariable(args[0]) ) {
                 
                 var thisDir = unparse(args[0]),
@@ -100,7 +114,7 @@ module.exports = function (file) {
                 }catch(err){}
 
                 obj+= "((function(){ ";
-                obj+= bindShim + someShim;
+                obj+= bindShim;
                 
                 if(toString){
                     obj+= "var returnMe = '';";                                    
@@ -108,8 +122,8 @@ module.exports = function (file) {
                 else if(toArray){
                     obj+= "var returnMe = [];";
                 }else{
-                    obj+= "var curry = require('curryFolder'), proxy = {};";
-                    obj+= "var returnMe = curry.bind('curried', proxy);";
+                    obj+= "var curry = require("+JSON.stringify(curryFolderLocation)+"), proxy = {};";
+                    obj+= "var returnMe = curry.bind({curryStatus: true}, proxy);";
                 }
 
                 function recurs(dirname2){
@@ -159,9 +173,11 @@ module.exports = function (file) {
                     else
                         existingProps.push(propname);                            
 
-                    obj += "returnMe[" + propname + "] = " + "proxy[" + propname + "] = " + toRequire + ";";
+                    obj += "returnMe[" + propname + "] = " + toRequire + ";";
                 });
                 
+                if(!toString && !toArray)
+                    obj+= "for(var p in returnMe){ proxy[p] = returnMe[p]; }";
                 obj += "return returnMe;})())";
                 node.update(obj);
             }
@@ -177,6 +193,7 @@ module.exports = function (file) {
 
     function whitelist(whitelist, files, rootdir){
         if(!whitelist || !files) return
+        rootdir = rootdir || "";
         var output = [];
         whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
         whitelist.forEach(function(rule){
@@ -193,14 +210,13 @@ module.exports = function (file) {
     function blacklist(blacklist, files, rootdir){
         if(!blacklist || !files) return
         blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
-        console.log(files)
+        rootdir = rootdir || "";
         files = files.filter(function(name){
             return !blacklist.some(function(rule){
                 rule = path.join( rootdir, rule );
                 return minimatch(name, rule);
             });
         });
-        console.log(files)
         return files
     }
 };

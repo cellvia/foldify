@@ -8,7 +8,7 @@ test('blacklist - populate', function(t){
 
 	t.plan(1);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {blacklist: ["js/*.js", "/html/*1.html"], recursive: true} );
+	var evaluate = curryFolder(__dirname + '/files', {blacklist: ["js/*.js", "/html/*1.html"], recursive: true} );
 	var res = typeof evaluate["js_file1"]
 			 + typeof evaluate["jsone_file1"]
 			 + typeof evaluate["jsone_file2"]
@@ -26,7 +26,7 @@ test('blacklist - evaluate + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {recursive: true} );
+	var evaluate = curryFolder(__dirname + '/files', {recursive: true} );
 	t.equal(typeof evaluate["js_file1"], "function");
 
 	var evaluated = evaluate([1,2,3], {blacklist: "js_file*", trim: true});
@@ -59,7 +59,7 @@ test('blacklist - tree + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = curryFolder(path.join(__dirname, 'files'), {tree: true, includeExt: true} );
+	var evaluate = curryFolder(__dirname + '/files', {tree: true, includeExt: true} );
 	t.equal(typeof evaluate.json.jsonone["jsonone_file.json"], "object");
 
 	var evaluated = evaluate([1,2,3], {blacklist: ["**/*.js", "**/*.json"], trim: true});

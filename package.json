@@ -17,9 +17,10 @@
     "tape": "~2.3.2"
   },
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "tape test/*.js",
+    "browser": "browserify -t ./transform.js ./test/browser/browser.js -o ./test/browser/test.js && testling -u"
   },
   "testling": {
-    "files": "test/browser/*.js"
+    "scripts": "./test/browser/test.js"
   }
 }

@@ -76,7 +76,7 @@ function curry(toBeCurried){
 };
 
 function populate(dirname, options){
-	if(!fs) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
+	if(!fs.readdirSync) throw "you must run the curryFolder browserify transform (curryFolder/transform.js) for curryFolder to work in the browser!";
 	var proxy = {},
 		toString = options.output && options.output.toLowerCase() === "string",
 		toArray = options.output && options.output.toLowerCase() === "array",
@@ -266,10 +266,11 @@ function checkList(list, name){
 
 function whitelist(whitelist, files, rootdir){
     if(!whitelist || !files) return
+    rootdir = rootdir || "";
     var output = [];
     whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
     whitelist.forEach(function(rule){
-        rule = path.join( rootdir || "", rule );
+        rule = path.join( rootdir, rule );
         files.forEach( function(name){
             if(~output.indexOf(name)) return
             if( minimatch(name, rule) )
@@ -281,11 +282,12 @@ function whitelist(whitelist, files, rootdir){
 
 function blacklist(blacklist, files, rootdir){
     if(!blacklist || !files) return
+    rootdir = rootdir || "";
     blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
 
     return files.filter(function(name){
         return !blacklist.some(function(rule){
-            rule = path.join( rootdir || "", rule );
+            rule = path.join( rootdir, rule );
             return minimatch(name, rule)
         });
     });
