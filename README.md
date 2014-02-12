@@ -5,10 +5,26 @@ Import / require folder(s) of any type of files, and evaluate / curry the result
 
 [![build status](https://secure.travis-ci.org/cellvia/curryFolder.png)](http://travis-ci.org/cellvia/curryFolder)
 
+```javascript
+var curryFolder = require("curryFolder");
+var routes = curryFolder(__dirname + "/lib/routes", {tree: true});
+
+// routes.errors.500:  function(app){ app.get(...) }
+// routes.errors.501:  function(app){ app.get(...) }
+// routes.index: 	   function(app){ app.get(...) }
+// routes.user.login:  function(app){ app.get(...) }
+// routes.user.logout: function(app){ app.get(...) }
+
+routes(app);
+//all are attached!
+
+```
+Clientside supported as well :-)
+
 ## Features
 
 ###completed:
-has server side and client side support (via supplied browserify transform)  
+server side and client side support (via supplied browserify transform)  
 can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
 can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
 is functional (continuously returns itself as a function, endlessly iterable)  
