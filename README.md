@@ -26,11 +26,11 @@ routes(app);
 Clientside folding supported as well :-)
 
 ## Uses
-*attach a folder of routes/controllers/etc easily (stop updating those pesky index.js files, who needs them??)
-*create a simple object hash of content, optionally filtered (for ex: grab all templates into a hash)
-*add a module w/ styles or templates (like bootstrap) to your project, then fold the style/etc folders you want from it.  (helpful for including non-js dependencies in your project and keeping them clean.)
-*functional fun, curry as much as you like before / during evaluation
-*get creative!
+* attach a folder of routes/controllers/etc easily (stop updating those pesky index.js files, who needs them??)
+* create a simple object hash of content, optionally filtered (for ex: grab all templates into a hash)
+* add a module w/ styles or templates (like bootstrap) to your project, then fold the style/etc folders you want from it.  (helpful for including non-js dependencies in your project and keeping them clean.)
+* functional fun, curry as much as you like before / during evaluation
+* get creative!
 
 ## Install
 
@@ -269,22 +269,22 @@ curried3()
 ## Features
 
 ###completed:
-*server side and client side support (via supplied browserify transform)  
-*can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
-*can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
-*can be folded endlessly
-*whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
-*compatible with for...in (no prototype properties to sort through)
-*tests in both server and browser
+* server side and client side support (via supplied browserify transform)  
+* can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
+* can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
+* can be folded endlessly
+* whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
+* compatible with for...in (no prototype properties to sort through)
+* tests in both server and browser
 
 ###yet to be completed:
-*ability to wrap a function around results
-*add tests for inputting arrays
-*add test for inputting and currying existing objects
-*add test for curry even upon evaluation (if undefined returned)
+* ability to wrap a function around results
+* add tests for inputting arrays
+* add test for inputting and currying existing objects
+* add test for curry even upon evaluation (if undefined returned)
 
 ## Testing
 
 Run `npm install` then `npm test` to test server code.
 
-To test in browser please install [browserify](https://github.com/substack/browserify) and [testling](https://github.com/substack/testling) globally, and then run `npm run browser-test` in the root dir of this module.
+To test in browser please install [browserify](https://github.com/substack/browserify) and [testling](https://github.com/substack/testling) globally, and then run `testling` in the root dir of this module.
