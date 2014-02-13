@@ -12,7 +12,7 @@ var bindShim = 'Function.prototype.bind||(Function.prototype.bind=function(a){if
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
     var data = '';
-    var curryNames = {};
+    var foldNames = {};
     var vars = [ '__dirname' ];
     var dirname = path.dirname(file);
     var pending = 0;
@@ -74,15 +74,15 @@ module.exports = function (file) {
             if (isRequire(node) && check
             && node.parent.type === 'VariableDeclarator'
             && node.parent.id.type === 'Identifier') {
-                curryNames[node.parent.id.name] = true;
+                foldNames[node.parent.id.name] = true;
             }
             if (isRequire(node) && check
             && node.parent.type === 'AssignmentExpression'
             && node.parent.left.type === 'Identifier') {
-                curryNames[node.parent.left.name] = true;
+                foldNames[node.parent.left.name] = true;
             }
             
-            if ( isCurry(node) && !containsUndefinedVariable(args[0]) ) {
+            if ( isFold(node) && !containsUndefinedVariable(args[0]) ) {
                 
                 var thisDir = unparse(args[0]),
                     thisDirParsed = eval(thisDir),
@@ -122,9 +122,9 @@ module.exports = function (file) {
                 else if(toArray){
                     obj+= "var returnMe = [];";
                 }else{
-                    obj+= "var curry = require("+JSON.stringify(foldifyLocation)+"), proxy = {}, map = false;";
+                    obj+= "var fold = require("+JSON.stringify(foldifyLocation)+"), proxy = {}, map = false;";
                     obj+= thisOpts.tree ? "map = {};" : "";
-                    obj+= "var returnMe = curry.bind({curryStatus: true, map: map}, proxy);";
+                    obj+= "var returnMe = fold.bind({foldStatus: true, map: map}, proxy);";
                 }
 
                 function recurs(dirname2){
@@ -213,10 +213,10 @@ module.exports = function (file) {
         return output;
     }
     
-    function isCurry (node) {
+    function isFold (node) {
         if (!node) return false;
         if (node.type !== 'CallExpression') return false;
-        return node.callee.type === 'Identifier' && curryNames[node.callee.name];
+        return node.callee.type === 'Identifier' && foldNames[node.callee.name];
     }
 
     function whitelist(whitelist, files, rootdir){

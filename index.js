@@ -5,23 +5,23 @@ var fs = require('fs'),
 
 module.exports = fold;
 
-function fold(toBeCurried){
-	if(!toBeCurried) return false;
+function fold(toBeFolded){
+	if(!toBeFolded) return false;
 	var moreArgs = [].slice.call(arguments, 1),
 		mergeToMe = {},
 		options,
 		individual,
 		originalFullPath;
 
-	if(util.isArray(toBeCurried)){
+	if(util.isArray(toBeFolded)){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
-		toBeCurried.forEach(function(toCurry){
-			individual = fold.call(this, toCurry, options)
+		toBeFolded.forEach(function(toFold){
+			individual = fold.call(this, toFold, options)
 			for(var prop in individual){
 				if(mergeToMe[prop]){
 					options.fullPath = true;
-					individual = fold.call(this, toCurry, options);
+					individual = fold.call(this, toFold, options);
 					options.fullPath = originalFullPath;
 					break;
 				}
@@ -33,10 +33,10 @@ function fold(toBeCurried){
 		return fold.bind( {foldStatus: true}, mergeToMe );
 	}
 
-	var	beingCurried = this && this.foldStatus,
-		isObj = typeof toBeCurried === "object" && !beingCurried,
-		isCurryObj = typeof toBeCurried === "object" && beingCurried,
-		isDir = typeof toBeCurried === "string",
+	var	beingFolded = this && this.foldStatus,
+		isObj = typeof toBeFolded === "object" && !beingFolded,
+		isFoldObj = typeof toBeFolded === "object" && beingFolded,
+		isDir = typeof toBeFolded === "string",
 		args,
 		output,
 		combined;
@@ -44,9 +44,9 @@ function fold(toBeCurried){
 	switch(false){
 		case !isDir:
 			options = moreArgs[0] || {};
-			output = populate.apply(this, [toBeCurried, options]);
+			output = populate.apply(this, [toBeFolded, options]);
 		break;
-		case !isCurryObj:
+		case !isFoldObj:
 			args = moreArgs[0] || [];
 			args = util.isArray(args) ? args : [args]
 			if(this.foldStatus === "foldOnly"){
@@ -57,15 +57,15 @@ function fold(toBeCurried){
 			}else{
 				options = moreArgs[1] || {};
 			}
-			output = evaluate.apply(this, [toBeCurried, args, options]);
+			output = evaluate.apply(this, [toBeFolded, args, options]);
 		break;
 		case !isObj:
 			options = moreArgs[0] || {};
-			for(var name in toBeCurried){
+			for(var name in toBeFolded){
 				if( (options.whitelist && !checkList(options.whitelist, name))
 				  || (options.blacklist && checkList(options.blacklist, name)) )
 					continue
-				fold[name] = toBeCurried[name];
+				fold[name] = toBeFolded[name];
 			}
 			output = fold.bind( {foldStatus: true}, fold );
 		break;
