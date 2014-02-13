@@ -32,6 +32,10 @@ Clientside folding supported as well :-)
 *functional fun, curry as much as you like before / during evaluation
 *get creative!
 
+## Install
+
+`npm install foldify`
+
 ## Usage
 
 There are two steps to usage.  First you must *initialize the hash*, by running foldify upon a directory name, an object, or an array of these.  The provided object is useful in itself, but you can then *evaluate the hash* with provided arguments, or just curry them in.  These steps take slightly different options, but both allow whitelisting/blacklisting of filenames/properties.
