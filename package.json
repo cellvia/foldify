@@ -22,13 +22,25 @@
       "url": "git://github.com/cellvia/foldify.git"
   },
   "scripts": {
-    "test": "tape test/*.js",
-    "browser-test": "browserify -t ./transform.js test/browser/browser.js -o test/browser/test.js && testling -u"
+    "test": "tape test/*.js"
+  },
+  "browserify": { 
+    "transform": [ "./transform.js" ] 
   },
   "testling": {
-    "scripts": "test/browser/test.js",
+    "files": "test/browser/browser.js",
     "browsers": [
-        "chrome/20"
+      "ie/8..latest",
+      "firefox/21..latest",
+      "firefox/nightly",
+      "chrome/26..latest",
+      "chrome/canary",
+      "opera/12..latest",
+      "opera/next",
+      "safari/5.1..latest",
+      "ipad/6.0..latest",
+      "iphone/6.0..latest",
+      "android-browser/4.2..latest"
     ]
   },
   "license": "MIT"
