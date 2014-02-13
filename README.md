@@ -1,7 +1,7 @@
 # foldify
 Fold your folders, any way you like.
 
-Import / require folders of any types of files, and evaluate / curry the results.
+Import / require folders of any filetypes; evaluate / curry the results.
 
 [![browser support](http://ci.testling.com/cellvia/foldify.png)](http://ci.testling.com/cellvia/foldify)
 
