@@ -18,9 +18,9 @@ var routes = foldify(__dirname + "/lib/routes", {tree: true});
 // routes.user.logout: function(app){ app.get(...) }
 
 routes(app, {whitelist: "errors/**"});
-//errors are now attached!
+//just errors are now attached!
 
-routes(app, {blacklist: "errors/**"});
+routes(app);
 //all routes are now attached!
 ```
 Clientside folding supported as well :-)
