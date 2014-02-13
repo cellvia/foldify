@@ -23,10 +23,10 @@
   },
   "scripts": {
     "test": "tape test/*.js",
-    "browser-test": "browserify -t ./transform.js ./test/browser/browser.js -o ./test/browser/test.js && testling -u"
+    "browser-test": "browserify -t ./transform.js test/browser/browser.js -o test/browser/test.js && testling -u"
   },
   "testling": {
-    "scripts": "./test/browser/test.js",
+    "scripts": "test/browser/test.js",
     "browsers": [
         "chrome/20"
     ]
