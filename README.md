@@ -25,6 +25,13 @@ routes(app, {blacklist: "errors/**"});
 ```
 Clientside folding supported as well :-)
 
+## Uses
+*attach a folder of routes/controllers/etc easily (stop updating those pesky index.js files, who needs them??)
+*create a simple object hash of content, optionally filtered (for ex: grab all templates into a hash)
+*add a module w/ styles or templates (like bootstrap) to your project, then fold the style/etc folders you want from it.  (helpful for including non-js dependencies in your project and keeping them clean.)
+*functional fun, curry as much as you like before / during evaluation
+*get creative!
+
 ## Usage
 
 There are two steps to usage.  First you must *initialize the hash*, by running foldify upon a directory name, an object, or an array of these.  The provided object is useful in itself, but you can then *evaluate the hash* with provided arguments, or just curry them in.  These steps take slightly different options, but both allow whitelisting/blacklisting of filenames/properties.
@@ -252,22 +259,25 @@ var curried3 = curried2(10, {allowUndefined: true});
 typeof curried3.mathFunc // undefined
 
 curried3()
-//currying or evaluating further will continue to produce `undefined`
+//folding further will continue to produce `undefined`
 ```
 
 ## Features
 
 ###completed:
-server side and client side support (via supplied browserify transform)  
-can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
-can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
-can be folded endlessly
-whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
-compatible with for...in (no prototype properties to sort through)
-tests in both server and browser
+*server side and client side support (via supplied browserify transform)  
+*can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
+*can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
+*can be folded endlessly
+*whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
+*compatible with for...in (no prototype properties to sort through)
+*tests in both server and browser
 
 ###yet to be completed:
-ability to wrap a function around results
+*ability to wrap a function around results
+*add tests for inputting arrays
+*add test for inputting and currying existing objects
+*add test for curry even upon evaluation (if undefined returned)
 
 ## Testing
 
