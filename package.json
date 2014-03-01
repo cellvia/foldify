@@ -12,25 +12,25 @@
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
     "falafel": "~0.3.1",
-    "minimatch": "~0.2.14",
-    "browserify": "2.29.0"
+    "minimatch": "~0.2.14"
   },
   "devDependencies": {
     "tape": "~2.3.2",
-    "browserify": "2.29.0"
+    "browserify": "~2"
   },
   "repository": {
       "type": "git",
       "url": "git://github.com/cellvia/foldify.git"
   },
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "tape test/*.js",
+    "browser-test": "browserify ./test/browser/browser.js -t ./transform.js -o ./test/browser/browser-test.js && testling -u"
   },
   "browserify": { 
     "transform": [ "./transform.js" ] 
   },
   "testling": {
-    "files": "test/browser/browser.js",
+    "scripts": "test/browser/browser-test.js",
     "browsers": [
       "ie/8..latest",
       "firefox/21..latest",
