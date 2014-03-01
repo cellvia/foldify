@@ -76,7 +76,7 @@ function fold(toBeFolded){
 };
 
 function populate(dirname, options){
-	if(!fs.readdirSync) throw "you must run the foldFolder browserify transform (foldFolder/transform.js) for foldFolder to work in the browser!";
+	if(!fs.readdirSync) throw "you must run the foldify browserify transform (foldify/transform.js) for foldify to work in the browser!";
 	var proxy = {},
 		toString = options.output && options.output.toLowerCase() === "string",
 		toArray = options.output && options.output.toLowerCase() === "array",
