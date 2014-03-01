@@ -15,7 +15,8 @@
     "minimatch": "~0.2.14"
   },
   "devDependencies": {
-    "tape": "~2.3.2"
+    "tape": "~2.3.2",
+    "browserify": "~2"
   },
   "repository": {
       "type": "git",
