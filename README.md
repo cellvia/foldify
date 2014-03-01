@@ -288,3 +288,5 @@ curried3()
 Run `npm install` then `npm test` to test server code.
 
 To test in browser please install [browserify](https://github.com/substack/browserify) @~2 globally and [testling](https://github.com/substack/testling) globally, and then run `npm run browser-test` in the root dir of this module.
+
+NOTE: the tests in testling CI do not include safari 5.1, since they test incorrectly (passes locally)
