@@ -282,6 +282,7 @@ curried3()
 * add tests for inputting arrays
 * add test for inputting and currying existing objects
 * add test for curry even upon evaluation (if undefined returned)
+* seems to be a browserify compatibility problem with ie8 (object.defineProperty)
 
 ## Testing
 
