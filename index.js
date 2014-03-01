@@ -395,7 +395,7 @@ if (!Function.prototype.bind) {
         fToBind = this, 
         fNOP = function () {},
         fBound = function () {
-          return fToBind.apply(this instanceof fNOP && oThis
+          return fToBind.apply(oThis
                                  ? this
                                  : oThis,
                                aArgs.concat(Array.prototype.slice.call(arguments)));
