@@ -8432,12 +8432,12 @@ test('recursive - evaluate', function(t){
 
 	var expected = "<html><body>html_file3.html</body></html>"
 				+ "jsone_file3.js"+1+2+3
-				+ "function (){}"
+				+ "function(){}"
 				+ "foobar";
 
 	var res = evaluated["html_file3.html"] 
 				+ evaluated["jsone_file3.js"]
-				+ evaluated["js_file1.js"]
+				+ (""+evaluated["js_file1.js"]).replace(" ", "")
 				+ evaluated["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
@@ -8445,7 +8445,7 @@ test('recursive - evaluate', function(t){
 	evaluated = evaluated()
 	res = evaluated["html_file3.html"] 
 			+ evaluated["jsone_file3.js"]
-			+ evaluated["js_file1.js"]
+			+ (""+evaluated["js_file1.js"]).replace(" ", "")
 			+ evaluated["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
@@ -8481,12 +8481,12 @@ test('tree - evaluate', function(t){
 
 	var expected = "<html><body>html_file3.html</body></html>"
 				+ "jsone_file2.js"+1+2+3
-				+ "function (){}"
+				+ "function(){}"
 				+ "foobar";
 
 	var res = evaluated.html["html_file3.html"] 
 				+ evaluated.js.jsone["jsone_file2.js"]
-				+ evaluated.js["js_file1.js"]
+				+ (""+evaluated.js["js_file1.js"]).replace(" ", "")
 				+ evaluated.json.jsonone["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
@@ -8494,7 +8494,7 @@ test('tree - evaluate', function(t){
 	evaluated = evaluated()
 	res = evaluated.html["html_file3.html"] 
 			+ evaluated.js.jsone["jsone_file2.js"]
-			+ evaluated.js["js_file1.js"]
+			+ (""+evaluated.js["js_file1.js"]).replace(" ", "")
 			+ evaluated.json.jsonone["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
