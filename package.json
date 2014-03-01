@@ -12,11 +12,11 @@
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
     "falafel": "~0.3.1",
-    "minimatch": "~0.2.14"
+    "minimatch": "~0.2.14",
+    "browserify": "~2"
   },
   "devDependencies": {
-    "tape": "~2.3.2",
-    "browserify": "~2"
+    "tape": "~2.3.2"
   },
   "repository": {
       "type": "git",
