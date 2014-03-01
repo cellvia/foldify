@@ -32,7 +32,7 @@ test('recursive - evaluate', function(t){
 
 	var res = evaluated["html_file3.html"] 
 				+ evaluated["jsone_file3.js"]
-				+ (""+evaluated["js_file1.js"]).replace(" ", "")
+				+ evaluated["js_file1.js"].toString().replace(" ", "")
 				+ evaluated["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
@@ -40,7 +40,7 @@ test('recursive - evaluate', function(t){
 	evaluated = evaluated()
 	res = evaluated["html_file3.html"] 
 			+ evaluated["jsone_file3.js"]
-			+ (""+evaluated["js_file1.js"]).replace(" ", "")
+			+ evaluated["js_file1.js"].toString().replace(" ", "")
 			+ evaluated["jsonone_file.json"].jsonone_file;
 
 	t.equal(res, expected)
