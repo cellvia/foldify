@@ -15,8 +15,7 @@
     "minimatch": "~0.2.14"
   },
   "devDependencies": {
-    "tape": "~2.3.2",
-    "browserify": "~2"
+    "tape": "~2.3.2"
   },
   "repository": {
       "type": "git",
@@ -25,9 +24,6 @@
   "scripts": {
     "test": "tape test/*.js",
     "browser-test": "browserify ./test/browser/browser.js -t ./transform.js -o ./test/browser/browser-test.js && testling -u"
-  },
-  "browserify": { 
-    "transform": [ "./transform.js" ] 
   },
   "testling": {
     "scripts": "test/browser/browser-test.js",
