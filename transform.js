@@ -7,7 +7,7 @@ var falafel = require('falafel');
 var unparse = require('escodegen').generate;
 var minimatch = require('minimatch');
 
-var bindShim = 'Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});';
+var bindShim = "var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };";
 
 module.exports = function (file) {
     if (/\.json$/.test(file)) return through();
@@ -124,7 +124,7 @@ module.exports = function (file) {
                 }else{
                     obj+= "var fold = require("+JSON.stringify(foldifyLocation)+"), proxy = {}, map = false;";
                     obj+= thisOpts.tree ? "map = {};" : "";
-                    obj+= "var returnMe = fold.bind({foldStatus: true, map: map}, proxy);";
+                    obj+= "var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);";
                 }
 
                 function recurs(dirname2){

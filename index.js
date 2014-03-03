@@ -1,6 +1,5 @@
 var fs = require('fs'),
 	path = require('path'),
-	util = require('util'),
 	minimatch = require('minimatch');
 
 module.exports = fold;
@@ -13,7 +12,7 @@ function fold(toBeFolded){
 		individual,
 		originalFullPath;
 
-	if(util.isArray(toBeFolded)){
+	if(isArray(toBeFolded)){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
 		toBeFolded.forEach(function(toFold){
@@ -30,7 +29,7 @@ function fold(toBeFolded){
 	          mergeToMe[prop] = individual[prop];
 	        }
 		});
-		return fold.bind( {foldStatus: true}, mergeToMe );
+		return bind( fold, {foldStatus: true}, mergeToMe );
 	}
 
 	var	beingFolded = this && this.foldStatus,
@@ -48,15 +47,15 @@ function fold(toBeFolded){
 		break;
 		case !isFoldObj:
 			args = moreArgs[0] || [];
-			args = util.isArray(args) ? args : [args]
+			args = isArray(args, true) ? args : [args]
 			if(this.foldStatus === "foldOnly"){
 				args2 = moreArgs[1] || [];
-				args2 = util.isArray(args2) ? args2 : [args2]
+				args2 = isArray(args2) ? args2 : [args2]
 				args = args.concat(args2);
 				options = moreArgs[2] || {};				
 			}else{
 				options = moreArgs[1] || {};
-			}
+			}			
 			output = evaluate.apply(this, [toBeFolded, args, options]);
 		break;
 		case !isObj:
@@ -67,7 +66,7 @@ function fold(toBeFolded){
 					continue
 				fold[name] = toBeFolded[name];
 			}
-			output = fold.bind( {foldStatus: true}, fold );
+			output = bind( fold, {foldStatus: true}, fold );
 		break;
 	}
 
@@ -93,7 +92,7 @@ function populate(dirname, options){
 	}else if(toArray){
 		returnMe = [];
 	}else{
-		returnMe = fold.bind( { foldStatus: true, map: map }, proxy );
+		returnMe = bind( fold, { foldStatus: true, map: map }, proxy );
 	}
 
     try{
@@ -197,10 +196,10 @@ function evaluate(srcObj, args, options){
 	var proxy = {}, returnObj;
 	if(options.evaluate === false){
 		this.foldStatus = "foldOnly";
-		returnObj = Function.prototype.bind.apply( fold, [this, proxy].concat([args]) );
+		returnObj = bind( fold, this, proxy, args );
 	}
 	else
-		returnObj = fold.bind( this, proxy );
+		returnObj = bind( fold, this, proxy );
 
 	var objpaths = flatten.call(this.map, srcObj);
 
@@ -225,7 +224,7 @@ function evaluate(srcObj, args, options){
 		add = node = objpaths[objpath];
 
 		if(!skip && typeof node === "function")
-			add = options.evaluate !== false ? node.apply( srcObj, args) : Function.prototype.bind.apply( node, [srcObj].concat(args) );
+			add = options.evaluate !== false ? node.apply( srcObj, args) : bind.apply( bind, [node, srcObj].concat(args) );
 		
 		if(typeof add === "undefined" && options.allowUndefined !== true && options.trim)
 			continue
@@ -258,7 +257,7 @@ function evaluate(srcObj, args, options){
 }
 
 function checkList(list, name){
-	list = util.isArray(list) ? list : [list];
+	list = isArray(list) ? list : [list];
 	return list.some(function(rule){
 		return minimatch(name, path.normalize(rule));
 	});
@@ -268,7 +267,7 @@ function whitelist(whitelist, files, rootdir){
     if(!whitelist || !files) return
     rootdir = rootdir || "";
     var output = [];
-    whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
+    whitelist = isArray(whitelist) ? whitelist : [whitelist];
     whitelist.forEach(function(rule){
         rule = path.join( rootdir, rule );
         files.forEach( function(name){
@@ -283,7 +282,7 @@ function whitelist(whitelist, files, rootdir){
 function blacklist(blacklist, files, rootdir){
     if(!blacklist || !files) return
     rootdir = rootdir || "";
-    blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
+    blacklist = isArray(blacklist) ? blacklist : [blacklist];
 
     return files.filter(function(name){
         return !blacklist.some(function(rule){
@@ -384,26 +383,21 @@ if (!Array.prototype.some) {
     return false;
   };
 };
-if (!Function.prototype.bind) {
-  Function.prototype.bind = function (oThis) {
-    if (typeof this !== "function") {
-      // closest thing possible to the ECMAScript 5 internal IsCallable function
-      // throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
-    }
 
-    var aArgs = Array.prototype.slice.call(arguments, 1), 
-        fToBind = this, 
-        fNOP = function () {},
-        fBound = function () {
-          return fToBind.apply(oThis
-                                 ? this
-                                 : oThis,
-                               aArgs.concat(Array.prototype.slice.call(arguments)));
-        };
+function bind(fn){
+	var args = Array.prototype.slice.call(arguments, 1);
+	if (!Function.prototype.bind) {
+	     return function(){
+			var onearg = args.shift();
+			var newargs = args.concat(Array.prototype.slice.call(arguments,0));
+			var returnme = fn.apply(onearg, newargs );
+	        return returnme;
+	     };
+	}else{
+		return fn.bind.apply(fn, args);
+	};
+}
 
-    fNOP.prototype = this.prototype;
-    fBound.prototype = new fNOP();
-
-    return fBound;
-  };
-};
+function isArray(obj){
+	return ~Object.prototype.toString.call(obj).toLowerCase().indexOf("array");
+}

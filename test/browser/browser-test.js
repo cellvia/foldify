@@ -4504,7 +4504,6 @@ function hasOwnProperty(obj, prop) {
 },{"./support/isBuffer":17,"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"inherits":6}],19:[function(require,module,exports){
 var fs = require('fs'),
 	path = require('path'),
-	util = require('util'),
 	minimatch = require('minimatch');
 
 module.exports = fold;
@@ -4517,7 +4516,7 @@ function fold(toBeFolded){
 		individual,
 		originalFullPath;
 
-	if(util.isArray(toBeFolded)){
+	if(isArray(toBeFolded)){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
 		toBeFolded.forEach(function(toFold){
@@ -4534,7 +4533,7 @@ function fold(toBeFolded){
 	          mergeToMe[prop] = individual[prop];
 	        }
 		});
-		return fold.bind( {foldStatus: true}, mergeToMe );
+		return bind( fold, {foldStatus: true}, mergeToMe );
 	}
 
 	var	beingFolded = this && this.foldStatus,
@@ -4552,15 +4551,15 @@ function fold(toBeFolded){
 		break;
 		case !isFoldObj:
 			args = moreArgs[0] || [];
-			args = util.isArray(args) ? args : [args]
+			args = isArray(args, true) ? args : [args]
 			if(this.foldStatus === "foldOnly"){
 				args2 = moreArgs[1] || [];
-				args2 = util.isArray(args2) ? args2 : [args2]
+				args2 = isArray(args2) ? args2 : [args2]
 				args = args.concat(args2);
 				options = moreArgs[2] || {};				
 			}else{
 				options = moreArgs[1] || {};
-			}
+			}			
 			output = evaluate.apply(this, [toBeFolded, args, options]);
 		break;
 		case !isObj:
@@ -4571,7 +4570,7 @@ function fold(toBeFolded){
 					continue
 				fold[name] = toBeFolded[name];
 			}
-			output = fold.bind( {foldStatus: true}, fold );
+			output = bind( fold, {foldStatus: true}, fold );
 		break;
 	}
 
@@ -4597,7 +4596,7 @@ function populate(dirname, options){
 	}else if(toArray){
 		returnMe = [];
 	}else{
-		returnMe = fold.bind( { foldStatus: true, map: map }, proxy );
+		returnMe = bind( fold, { foldStatus: true, map: map }, proxy );
 	}
 
     try{
@@ -4701,10 +4700,10 @@ function evaluate(srcObj, args, options){
 	var proxy = {}, returnObj;
 	if(options.evaluate === false){
 		this.foldStatus = "foldOnly";
-		returnObj = Function.prototype.bind.apply( fold, [this, proxy].concat([args]) );
+		returnObj = bind( fold, this, proxy, args );
 	}
 	else
-		returnObj = fold.bind( this, proxy );
+		returnObj = bind( fold, this, proxy );
 
 	var objpaths = flatten.call(this.map, srcObj);
 
@@ -4729,7 +4728,7 @@ function evaluate(srcObj, args, options){
 		add = node = objpaths[objpath];
 
 		if(!skip && typeof node === "function")
-			add = options.evaluate !== false ? node.apply( srcObj, args) : Function.prototype.bind.apply( node, [srcObj].concat(args) );
+			add = options.evaluate !== false ? node.apply( srcObj, args) : bind.apply( bind, [node, srcObj].concat(args) );
 		
 		if(typeof add === "undefined" && options.allowUndefined !== true && options.trim)
 			continue
@@ -4762,7 +4761,7 @@ function evaluate(srcObj, args, options){
 }
 
 function checkList(list, name){
-	list = util.isArray(list) ? list : [list];
+	list = isArray(list) ? list : [list];
 	return list.some(function(rule){
 		return minimatch(name, path.normalize(rule));
 	});
@@ -4772,7 +4771,7 @@ function whitelist(whitelist, files, rootdir){
     if(!whitelist || !files) return
     rootdir = rootdir || "";
     var output = [];
-    whitelist = util.isArray(whitelist) ? whitelist : [whitelist];
+    whitelist = isArray(whitelist) ? whitelist : [whitelist];
     whitelist.forEach(function(rule){
         rule = path.join( rootdir, rule );
         files.forEach( function(name){
@@ -4787,7 +4786,7 @@ function whitelist(whitelist, files, rootdir){
 function blacklist(blacklist, files, rootdir){
     if(!blacklist || !files) return
     rootdir = rootdir || "";
-    blacklist = util.isArray(blacklist) ? blacklist : [blacklist];
+    blacklist = isArray(blacklist) ? blacklist : [blacklist];
 
     return files.filter(function(name){
         return !blacklist.some(function(rule){
@@ -4888,50 +4887,683 @@ if (!Array.prototype.some) {
     return false;
   };
 };
-if (!Function.prototype.bind) {
-  Function.prototype.bind = function (oThis) {
-    if (typeof this !== "function") {
-      // closest thing possible to the ECMAScript 5 internal IsCallable function
-      // throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+
+function bind(fn){
+	var args = Array.prototype.slice.call(arguments, 1);
+	if (!Function.prototype.bind) {
+	     return function(){
+			var onearg = args.shift();
+			var newargs = args.concat(Array.prototype.slice.call(arguments,0));
+			var returnme = fn.apply(onearg, newargs );
+	        return returnme;
+	     };
+	}else{
+		return fn.bind.apply(fn, args);
+	};
+}
+
+function isArray(obj){
+	return ~Object.prototype.toString.call(obj).toLowerCase().indexOf("array");
+}
+},{"fs":1,"minimatch":20,"path":8}],20:[function(require,module,exports){
+(function (process){
+
+
+if(typeof JSON === "undefined"){
+
+/*
+    json2.js
+    2014-02-04
+
+    Public Domain.
+
+    NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
+    See http://www.JSON.org/js.html
+
+
+    This code should be minified before deployment.
+    See http://javascript.crockford.com/jsmin.html
+
+    USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
+    NOT CONTROL.
+
+
+    This file creates a global JSON object containing two methods: stringify
+    and parse.
+
+        JSON.stringify(value, replacer, space)
+            value       any JavaScript value, usually an object or array.
+
+            replacer    an optional parameter that determines how object
+                        values are stringified for objects. It can be a
+                        function or an array of strings.
+
+            space       an optional parameter that specifies the indentation
+                        of nested structures. If it is omitted, the text will
+                        be packed without extra whitespace. If it is a number,
+                        it will specify the number of spaces to indent at each
+                        level. If it is a string (such as '\t' or '&nbsp;'),
+                        it contains the characters used to indent at each level.
+
+            This method produces a JSON text from a JavaScript value.
+
+            When an object value is found, if the object contains a toJSON
+            method, its toJSON method will be called and the result will be
+            stringified. A toJSON method does not serialize: it returns the
+            value represented by the name/value pair that should be serialized,
+            or undefined if nothing should be serialized. The toJSON method
+            will be passed the key associated with the value, and this will be
+            bound to the value
+
+            For example, this would serialize Dates as ISO strings.
+
+                Date.prototype.toJSON = function (key) {
+                    function f(n) {
+                        // Format integers to have at least two digits.
+                        return n < 10 ? '0' + n : n;
+                    }
+
+                    return this.getUTCFullYear()   + '-' +
+                         f(this.getUTCMonth() + 1) + '-' +
+                         f(this.getUTCDate())      + 'T' +
+                         f(this.getUTCHours())     + ':' +
+                         f(this.getUTCMinutes())   + ':' +
+                         f(this.getUTCSeconds())   + 'Z';
+                };
+
+            You can provide an optional replacer method. It will be passed the
+            key and value of each member, with this bound to the containing
+            object. The value that is returned from your method will be
+            serialized. If your method returns undefined, then the member will
+            be excluded from the serialization.
+
+            If the replacer parameter is an array of strings, then it will be
+            used to select the members to be serialized. It filters the results
+            such that only members with keys listed in the replacer array are
+            stringified.
+
+            Values that do not have JSON representations, such as undefined or
+            functions, will not be serialized. Such values in objects will be
+            dropped; in arrays they will be replaced with null. You can use
+            a replacer function to replace those with JSON values.
+            JSON.stringify(undefined) returns undefined.
+
+            The optional space parameter produces a stringification of the
+            value that is filled with line breaks and indentation to make it
+            easier to read.
+
+            If the space parameter is a non-empty string, then that string will
+            be used for indentation. If the space parameter is a number, then
+            the indentation will be that many spaces.
+
+            Example:
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}]);
+            // text is '["e",{"pluribus":"unum"}]'
+
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}], null, '\t');
+            // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
+
+            text = JSON.stringify([new Date()], function (key, value) {
+                return this[key] instanceof Date ?
+                    'Date(' + this[key] + ')' : value;
+            });
+            // text is '["Date(---current time---)"]'
+
+
+        JSON.parse(text, reviver)
+            This method parses a JSON text to produce an object or array.
+            It can throw a SyntaxError exception.
+
+            The optional reviver parameter is a function that can filter and
+            transform the results. It receives each of the keys and values,
+            and its return value is used instead of the original value.
+            If it returns what it received, then the structure is not modified.
+            If it returns undefined then the member is deleted.
+
+            Example:
+
+            // Parse the text. Values that look like ISO date strings will
+            // be converted to Date objects.
+
+            myData = JSON.parse(text, function (key, value) {
+                var a;
+                if (typeof value === 'string') {
+                    a =
+/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+                    if (a) {
+                        return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4],
+                            +a[5], +a[6]));
+                    }
+                }
+                return value;
+            });
+
+            myData = JSON.parse('["Date(09/09/2001)"]', function (key, value) {
+                var d;
+                if (typeof value === 'string' &&
+                        value.slice(0, 5) === 'Date(' &&
+                        value.slice(-1) === ')') {
+                    d = new Date(value.slice(5, -1));
+                    if (d) {
+                        return d;
+                    }
+                }
+                return value;
+            });
+
+
+    This is a reference implementation. You are free to copy, modify, or
+    redistribute.
+*/
+
+/*jslint evil: true, regexp: true */
+
+/*members "", "\b", "\t", "\n", "\f", "\r", "\"", JSON, "\\", apply,
+    call, charCodeAt, getUTCDate, getUTCFullYear, getUTCHours,
+    getUTCMinutes, getUTCMonth, getUTCSeconds, hasOwnProperty, join,
+    lastIndex, length, parse, prototype, push, replace, slice, stringify,
+    test, toJSON, toString, valueOf
+*/
+
+
+// Create a JSON object only if one does not already exist. We create the
+// methods in a closure to avoid creating global variables.
+
+if (typeof JSON !== 'object') {
+    JSON = {};
+}
+
+(function () {
+    'use strict';
+
+    function f(n) {
+        // Format integers to have at least two digits.
+        return n < 10 ? '0' + n : n;
     }
 
-    var aArgs = Array.prototype.slice.call(arguments, 1), 
-        fToBind = this, 
-        fNOP = function () {},
-        fBound = function () {
-          return fToBind.apply(oThis
-                                 ? this
-                                 : oThis,
-                               aArgs.concat(Array.prototype.slice.call(arguments)));
+    if (typeof Date.prototype.toJSON !== 'function') {
+
+        Date.prototype.toJSON = function () {
+
+            return isFinite(this.valueOf())
+                ? this.getUTCFullYear()     + '-' +
+                    f(this.getUTCMonth() + 1) + '-' +
+                    f(this.getUTCDate())      + 'T' +
+                    f(this.getUTCHours())     + ':' +
+                    f(this.getUTCMinutes())   + ':' +
+                    f(this.getUTCSeconds())   + 'Z'
+                : null;
         };
 
-    fNOP.prototype = this.prototype;
-    fBound.prototype = new fNOP();
+        String.prototype.toJSON      =
+            Number.prototype.toJSON  =
+            Boolean.prototype.toJSON = function () {
+                return this.valueOf();
+            };
+    }
 
-    return fBound;
+    var cx,
+        escapable,
+        gap,
+        indent,
+        meta,
+        rep;
+
+
+    function quote(string) {
+
+// If the string contains no control characters, no quote characters, and no
+// backslash characters, then we can safely slap some quotes around it.
+// Otherwise we must also replace the offending characters with safe escape
+// sequences.
+
+        escapable.lastIndex = 0;
+        return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+            var c = meta[a];
+            return typeof c === 'string'
+                ? c
+                : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+        }) + '"' : '"' + string + '"';
+    }
+
+
+    function str(key, holder) {
+
+// Produce a string from holder[key].
+
+        var i,          // The loop counter.
+            k,          // The member key.
+            v,          // The member value.
+            length,
+            mind = gap,
+            partial,
+            value = holder[key];
+
+// If the value has a toJSON method, call it to obtain a replacement value.
+
+        if (value && typeof value === 'object' &&
+                typeof value.toJSON === 'function') {
+            value = value.toJSON(key);
+        }
+
+// If we were called with a replacer function, then call the replacer to
+// obtain a replacement value.
+
+        if (typeof rep === 'function') {
+            value = rep.call(holder, key, value);
+        }
+
+// What happens next depends on the value's type.
+
+        switch (typeof value) {
+        case 'string':
+            return quote(value);
+
+        case 'number':
+
+// JSON numbers must be finite. Encode non-finite numbers as null.
+
+            return isFinite(value) ? String(value) : 'null';
+
+        case 'boolean':
+        case 'null':
+
+// If the value is a boolean or null, convert it to a string. Note:
+// typeof null does not produce 'null'. The case is included here in
+// the remote chance that this gets fixed someday.
+
+            return String(value);
+
+// If the type is 'object', we might be dealing with an object or an array or
+// null.
+
+        case 'object':
+
+// Due to a specification blunder in ECMAScript, typeof null is 'object',
+// so watch out for that case.
+
+            if (!value) {
+                return 'null';
+            }
+
+// Make an array to hold the partial results of stringifying this object value.
+
+            gap += indent;
+            partial = [];
+
+// Is the value an array?
+
+            if (Object.prototype.toString.apply(value) === '[object Array]') {
+
+// The value is an array. Stringify every element. Use null as a placeholder
+// for non-JSON values.
+
+                length = value.length;
+                for (i = 0; i < length; i += 1) {
+                    partial[i] = str(i, value) || 'null';
+                }
+
+// Join all of the elements together, separated with commas, and wrap them in
+// brackets.
+
+                v = partial.length === 0
+                    ? '[]'
+                    : gap
+                    ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']'
+                    : '[' + partial.join(',') + ']';
+                gap = mind;
+                return v;
+            }
+
+// If the replacer is an array, use it to select the members to be stringified.
+
+            if (rep && typeof rep === 'object') {
+                length = rep.length;
+                for (i = 0; i < length; i += 1) {
+                    if (typeof rep[i] === 'string') {
+                        k = rep[i];
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            } else {
+
+// Otherwise, iterate through all of the keys in the object.
+
+                for (k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            }
+
+// Join all of the member texts together, separated with commas,
+// and wrap them in braces.
+
+            v = partial.length === 0
+                ? '{}'
+                : gap
+                ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}'
+                : '{' + partial.join(',') + '}';
+            gap = mind;
+            return v;
+        }
+    }
+
+// If the JSON object does not yet have a stringify method, give it one.
+
+    if (typeof JSON.stringify !== 'function') {
+        escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+        meta = {    // table of character substitutions
+            '\b': '\\b',
+            '\t': '\\t',
+            '\n': '\\n',
+            '\f': '\\f',
+            '\r': '\\r',
+            '"' : '\\"',
+            '\\': '\\\\'
+        };
+        JSON.stringify = function (value, replacer, space) {
+
+// The stringify method takes a value and an optional replacer, and an optional
+// space parameter, and returns a JSON text. The replacer can be a function
+// that can replace values, or an array of strings that will select the keys.
+// A default replacer method can be provided. Use of the space parameter can
+// produce text that is more easily readable.
+
+            var i;
+            gap = '';
+            indent = '';
+
+// If the space parameter is a number, make an indent string containing that
+// many spaces.
+
+            if (typeof space === 'number') {
+                for (i = 0; i < space; i += 1) {
+                    indent += ' ';
+                }
+
+// If the space parameter is a string, it will be used as the indent string.
+
+            } else if (typeof space === 'string') {
+                indent = space;
+            }
+
+// If there is a replacer, it must be a function or an array.
+// Otherwise, throw an error.
+
+            rep = replacer;
+            if (replacer && typeof replacer !== 'function' &&
+                    (typeof replacer !== 'object' ||
+                    typeof replacer.length !== 'number')) {
+                throw new Error('JSON.stringify');
+            }
+
+// Make a fake root object containing our value under the key of ''.
+// Return the result of stringifying the value.
+
+            return str('', {'': value});
+        };
+    }
+
+
+// If the JSON object does not yet have a parse method, give it one.
+
+    if (typeof JSON.parse !== 'function') {
+        cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+        JSON.parse = function (text, reviver) {
+
+// The parse method takes a text and an optional reviver function, and returns
+// a JavaScript value if the text is a valid JSON text.
+
+            var j;
+
+            function walk(holder, key) {
+
+// The walk method is used to recursively walk the resulting structure so
+// that modifications can be made.
+
+                var k, v, value = holder[key];
+                if (value && typeof value === 'object') {
+                    for (k in value) {
+                        if (Object.prototype.hasOwnProperty.call(value, k)) {
+                            v = walk(value, k);
+                            if (v !== undefined) {
+                                value[k] = v;
+                            } else {
+                                delete value[k];
+                            }
+                        }
+                    }
+                }
+                return reviver.call(holder, key, value);
+            }
+
+
+// Parsing happens in four stages. In the first stage, we replace certain
+// Unicode characters with escape sequences. JavaScript handles many characters
+// incorrectly, either silently deleting them, or treating them as line endings.
+
+            text = String(text);
+            cx.lastIndex = 0;
+            if (cx.test(text)) {
+                text = text.replace(cx, function (a) {
+                    return '\\u' +
+                        ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                });
+            }
+
+// In the second stage, we run the text against regular expressions that look
+// for non-JSON patterns. We are especially concerned with '()' and 'new'
+// because they can cause invocation, and '=' because it can cause mutation.
+// But just to be safe, we want to reject all unexpected forms.
+
+// We split the second stage into 4 regexp operations in order to work around
+// crippling inefficiencies in IE's and Safari's regexp engines. First we
+// replace the JSON backslash pairs with '@' (a non-JSON character). Second, we
+// replace all simple value tokens with ']' characters. Third, we delete all
+// open brackets that follow a colon or comma or that begin the text. Finally,
+// we look to see that the remaining characters are only whitespace or ']' or
+// ',' or ':' or '{' or '}'. If that is so, then the text is safe for eval.
+
+            if (/^[\],:{}\s]*$/
+                    .test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
+                        .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']')
+                        .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+
+// In the third stage we use the eval function to compile the text into a
+// JavaScript structure. The '{' operator is subject to a syntactic ambiguity
+// in JavaScript: it can begin a block or an object literal. We wrap the text
+// in parens to eliminate the ambiguity.
+
+                j = eval('(' + text + ')');
+
+// In the optional fourth stage, we recursively walk the new structure, passing
+// each name/value pair to a reviver function for possible transformation.
+
+                return typeof reviver === 'function'
+                    ? walk({'': j}, '')
+                    : j;
+            }
+
+// If the text is not JSON parseable, then a SyntaxError is thrown.
+
+            throw new SyntaxError('JSON.parse');
+        };
+    }
+}());
+
+}
+
+if ('function' !== typeof Array.prototype.reduce) {
+  Array.prototype.reduce = function(callback, opt_initialValue){
+    'use strict';
+    if (null === this || 'undefined' === typeof this) {
+      // At the moment all modern browsers, that support strict mode, have
+      // native implementation of Array.prototype.reduce. For instance, IE8
+      // does not support strict mode, so this check is actually useless.
+      throw new TypeError(
+          'Array.prototype.reduce called on null or undefined');
+    }
+    if ('function' !== typeof callback) {
+      throw new TypeError(callback + ' is not a function');
+    }
+    var index, value,
+        length = this.length >>> 0,
+        isValueSet = false;
+    if (1 < arguments.length) {
+      value = opt_initialValue;
+      isValueSet = true;
+    }
+    for (index = 0; length > index; ++index) {
+      if (this.hasOwnProperty(index)) {
+        if (isValueSet) {
+          value = callback(value, this[index], index, this);
+        }
+        else {
+          value = this[index];
+          isValueSet = true;
+        }
+      }
+    }
+    if (!isValueSet) {
+      throw new TypeError('Reduce of empty array with no initial value');
+    }
+    return value;
   };
-};
+}
 
-},{"fs":1,"minimatch":20,"path":8,"util":18}],20:[function(require,module,exports){
-(function (process){
+if (!Array.prototype.map)
+{
+  Array.prototype.map = function(fun /*, thisArg */)
+  {
+    "use strict";
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun !== "function")
+      throw new TypeError();
+
+    var res = new Array(len);
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      // NOTE: Absolute correctness would demand Object.defineProperty
+      //       be used.  But this method is fairly new, and failure is
+      //       possible only if Object.prototype or Array.prototype
+      //       has a property |i| (very unlikely), so use a less-correct
+      //       but more portable alternative.
+      if (i in t)
+        res[i] = fun.call(thisArg, t[i], i, t);
+    }
+
+    return res;
+  };
+}
+
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+if (!Object.keys) {
+  Object.keys = (function () {
+    'use strict';
+    var hasOwnProperty = Object.prototype.hasOwnProperty,
+        hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString'),
+        dontEnums = [
+          'toString',
+          'toLocaleString',
+          'valueOf',
+          'hasOwnProperty',
+          'isPrototypeOf',
+          'propertyIsEnumerable',
+          'constructor'
+        ],
+        dontEnumsLength = dontEnums.length;
+
+    return function (obj) {
+      if (typeof obj !== 'object' && (typeof obj !== 'function' || obj === null)) {
+        throw new TypeError('Object.keys called on non-object');
+      }
+
+      var result = [], prop, i;
+
+      for (prop in obj) {
+        if (hasOwnProperty.call(obj, prop)) {
+          result.push(prop);
+        }
+      }
+
+      if (hasDontEnumBug) {
+        for (i = 0; i < dontEnumsLength; i++) {
+          if (hasOwnProperty.call(obj, dontEnums[i])) {
+            result.push(dontEnums[i]);
+          }
+        }
+      }
+      return result;
+    };
+  }());
+}
+
+if(!String.prototype.trim) {
+  String.prototype.trim = function () {
+    return this.replace(/^\s+/,'').replace(/\s+$/, '');
+  };
+}
+
+if (!Array.prototype.filter)
+{
+  Array.prototype.filter = function(fun /*, thisArg */)
+  {
+    "use strict";
+
+    if (this === void 0 || this === null)
+      throw new TypeError();
+
+    var t = Object(this);
+    var len = t.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var res = [];
+    var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t)
+      {
+        var val = t[i];
+
+        // NOTE: Technically this should Object.defineProperty at
+        //       the next index, as push can be affected by
+        //       properties on Object.prototype and Array.prototype.
+        //       But that method's new, and collisions should be
+        //       rare, so use the more-compatible alternative.
+        if (fun.call(thisArg, val, i, t))
+          res.push(val);
+      }
+    }
+
+    return res;
+  };
+}
+
 ;(function (require, exports, module, platform) {
 
 if (module) module.exports = minimatch
 else exports.minimatch = minimatch
 
-if (!require) {
-  require = function (id) {
-    switch (id) {
-      case "sigmund": return function sigmund (obj) {
-        return JSON.stringify(obj)
-      }
-      case "path": return { basename: function (f) {
-        f = f.split(/[\/\\]/)
-        var e = f.pop()
-        if (!e) e = f.pop()
-        return e
-      }}
-      case "lru-cache": return function LRUCache () {
+minimatch.Minimatch = Minimatch
+
+var LRU = function LRUCache () {
         // not quite an LRU, but still space-limited.
         var cache = {}
         var cnt = 0
@@ -4942,16 +5574,11 @@ if (!require) {
         }
         this.get = function (k) { return cache[k] }
       }
-    }
-  }
-}
-
-minimatch.Minimatch = Minimatch
-
-var LRU = require("lru-cache")
   , cache = minimatch.cache = new LRU({max: 100})
   , GLOBSTAR = minimatch.GLOBSTAR = Minimatch.GLOBSTAR = {}
-  , sigmund = require("sigmund")
+  , sigmund = process.browser ? function sigmund (obj) {
+        return JSON.stringify(obj)
+      } : require("sigmund")
 
 var path = require("path")
   // any single thing other than /
@@ -5970,262 +6597,9 @@ function regExpEscape (s) {
     typeof process === "object" ? process.platform : "win32"
   )
 
+
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"))
-},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"lru-cache":21,"path":8,"sigmund":22}],21:[function(require,module,exports){
-;(function () { // closure for web browsers
-
-if (typeof module === 'object' && module.exports) {
-  module.exports = LRUCache
-} else {
-  // just set the global for non-node platforms.
-  this.LRUCache = LRUCache
-}
-
-function hOP (obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key)
-}
-
-function naiveLength () { return 1 }
-
-function LRUCache (options) {
-  if (!(this instanceof LRUCache))
-    return new LRUCache(options)
-
-  if (typeof options === 'number')
-    options = { max: options }
-
-  if (!options)
-    options = {}
-
-  this._max = options.max
-  // Kind of weird to have a default max of Infinity, but oh well.
-  if (!this._max || !(typeof this._max === "number") || this._max <= 0 )
-    this._max = Infinity
-
-  this._lengthCalculator = options.length || naiveLength
-  if (typeof this._lengthCalculator !== "function")
-    this._lengthCalculator = naiveLength
-
-  this._allowStale = options.stale || false
-  this._maxAge = options.maxAge || null
-  this._dispose = options.dispose
-  this.reset()
-}
-
-// resize the cache when the max changes.
-Object.defineProperty(LRUCache.prototype, "max",
-  { set : function (mL) {
-      if (!mL || !(typeof mL === "number") || mL <= 0 ) mL = Infinity
-      this._max = mL
-      if (this._length > this._max) trim(this)
-    }
-  , get : function () { return this._max }
-  , enumerable : true
-  })
-
-// resize the cache when the lengthCalculator changes.
-Object.defineProperty(LRUCache.prototype, "lengthCalculator",
-  { set : function (lC) {
-      if (typeof lC !== "function") {
-        this._lengthCalculator = naiveLength
-        this._length = this._itemCount
-        for (var key in this._cache) {
-          this._cache[key].length = 1
-        }
-      } else {
-        this._lengthCalculator = lC
-        this._length = 0
-        for (var key in this._cache) {
-          this._cache[key].length = this._lengthCalculator(this._cache[key].value)
-          this._length += this._cache[key].length
-        }
-      }
-
-      if (this._length > this._max) trim(this)
-    }
-  , get : function () { return this._lengthCalculator }
-  , enumerable : true
-  })
-
-Object.defineProperty(LRUCache.prototype, "length",
-  { get : function () { return this._length }
-  , enumerable : true
-  })
-
-
-Object.defineProperty(LRUCache.prototype, "itemCount",
-  { get : function () { return this._itemCount }
-  , enumerable : true
-  })
-
-LRUCache.prototype.forEach = function (fn, thisp) {
-  thisp = thisp || this
-  var i = 0;
-  for (var k = this._mru - 1; k >= 0 && i < this._itemCount; k--) if (this._lruList[k]) {
-    i++
-    var hit = this._lruList[k]
-    if (this._maxAge && (Date.now() - hit.now > this._maxAge)) {
-      del(this, hit)
-      if (!this._allowStale) hit = undefined
-    }
-    if (hit) {
-      fn.call(thisp, hit.value, hit.key, this)
-    }
-  }
-}
-
-LRUCache.prototype.keys = function () {
-  var keys = new Array(this._itemCount)
-  var i = 0
-  for (var k = this._mru - 1; k >= 0 && i < this._itemCount; k--) if (this._lruList[k]) {
-    var hit = this._lruList[k]
-    keys[i++] = hit.key
-  }
-  return keys
-}
-
-LRUCache.prototype.values = function () {
-  var values = new Array(this._itemCount)
-  var i = 0
-  for (var k = this._mru - 1; k >= 0 && i < this._itemCount; k--) if (this._lruList[k]) {
-    var hit = this._lruList[k]
-    values[i++] = hit.value
-  }
-  return values
-}
-
-LRUCache.prototype.reset = function () {
-  if (this._dispose && this._cache) {
-    for (var k in this._cache) {
-      this._dispose(k, this._cache[k].value)
-    }
-  }
-
-  this._cache = Object.create(null) // hash of items by key
-  this._lruList = Object.create(null) // list of items in order of use recency
-  this._mru = 0 // most recently used
-  this._lru = 0 // least recently used
-  this._length = 0 // number of items in the list
-  this._itemCount = 0
-}
-
-// Provided for debugging/dev purposes only. No promises whatsoever that
-// this API stays stable.
-LRUCache.prototype.dump = function () {
-  return this._cache
-}
-
-LRUCache.prototype.dumpLru = function () {
-  return this._lruList
-}
-
-LRUCache.prototype.set = function (key, value) {
-  if (hOP(this._cache, key)) {
-    // dispose of the old one before overwriting
-    if (this._dispose) this._dispose(key, this._cache[key].value)
-    if (this._maxAge) this._cache[key].now = Date.now()
-    this._cache[key].value = value
-    this.get(key)
-    return true
-  }
-
-  var len = this._lengthCalculator(value)
-  var age = this._maxAge ? Date.now() : 0
-  var hit = new Entry(key, value, this._mru++, len, age)
-
-  // oversized objects fall out of cache automatically.
-  if (hit.length > this._max) {
-    if (this._dispose) this._dispose(key, value)
-    return false
-  }
-
-  this._length += hit.length
-  this._lruList[hit.lu] = this._cache[key] = hit
-  this._itemCount ++
-
-  if (this._length > this._max) trim(this)
-  return true
-}
-
-LRUCache.prototype.has = function (key) {
-  if (!hOP(this._cache, key)) return false
-  var hit = this._cache[key]
-  if (this._maxAge && (Date.now() - hit.now > this._maxAge)) {
-    return false
-  }
-  return true
-}
-
-LRUCache.prototype.get = function (key) {
-  return get(this, key, true)
-}
-
-LRUCache.prototype.peek = function (key) {
-  return get(this, key, false)
-}
-
-LRUCache.prototype.pop = function () {
-  var hit = this._lruList[this._lru]
-  del(this, hit)
-  return hit || null
-}
-
-LRUCache.prototype.del = function (key) {
-  del(this, this._cache[key])
-}
-
-function get (self, key, doUse) {
-  var hit = self._cache[key]
-  if (hit) {
-    if (self._maxAge && (Date.now() - hit.now > self._maxAge)) {
-      del(self, hit)
-      if (!self._allowStale) hit = undefined
-    } else {
-      if (doUse) use(self, hit)
-    }
-    if (hit) hit = hit.value
-  }
-  return hit
-}
-
-function use (self, hit) {
-  shiftLU(self, hit)
-  hit.lu = self._mru ++
-  self._lruList[hit.lu] = hit
-}
-
-function trim (self) {
-  while (self._lru < self._mru && self._length > self._max)
-    del(self, self._lruList[self._lru])
-}
-
-function shiftLU (self, hit) {
-  delete self._lruList[ hit.lu ]
-  while (self._lru < self._mru && !self._lruList[self._lru]) self._lru ++
-}
-
-function del (self, hit) {
-  if (hit) {
-    if (self._dispose) self._dispose(hit.key, hit.value)
-    self._length -= hit.length
-    self._itemCount --
-    delete self._cache[ hit.key ]
-    shiftLU(self, hit)
-  }
-}
-
-// classy, since V8 prefers predictable objects.
-function Entry (key, value, lu, length, now) {
-  this.key = key
-  this.value = value
-  this.lu = lu
-  this.length = length
-  this.now = now
-}
-
-})()
-
-},{}],22:[function(require,module,exports){
+},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"path":8,"sigmund":21}],21:[function(require,module,exports){
 module.exports = sigmund
 function sigmund (subject, maxSessions) {
     maxSessions = maxSessions || 10;
@@ -6266,7 +6640,7 @@ function sigmund (subject, maxSessions) {
 
 // vim: set softtabstop=4 shiftwidth=4:
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 (function (process){
 var defined = require('defined');
 var createDefaultStream = require('./lib/default_stream');
@@ -6404,7 +6778,7 @@ function createHarness (conf_) {
 }
 
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"))
-},{"./lib/default_stream":24,"./lib/results":25,"./lib/test":26,"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"defined":30}],24:[function(require,module,exports){
+},{"./lib/default_stream":23,"./lib/results":24,"./lib/test":25,"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"defined":29}],23:[function(require,module,exports){
 var through = require('through');
 
 module.exports = function () {
@@ -6430,7 +6804,7 @@ module.exports = function () {
     }
 };
 
-},{"through":36}],25:[function(require,module,exports){
+},{"through":35}],24:[function(require,module,exports){
 (function (process){
 var Stream = require('stream');
 var EventEmitter = require('events').EventEmitter;
@@ -6608,7 +6982,7 @@ function getNextTest(results) {
 }
 
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"))
-},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"events":5,"inherits":31,"jsonify":32,"resumer":35,"stream":10,"through":36}],26:[function(require,module,exports){
+},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"events":5,"inherits":30,"jsonify":31,"resumer":34,"stream":10,"through":35}],25:[function(require,module,exports){
 (function (process,__dirname){
 var Stream = require('stream');
 var deepEqual = require('deep-equal');
@@ -7037,7 +7411,7 @@ Test.prototype.doesNotThrow = function (fn, expected, msg, extra) {
 // vim: set softtabstop=4 shiftwidth=4:
 
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"),"/..\\..\\node_modules\\tape\\lib")
-},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"deep-equal":27,"defined":30,"events":5,"path":8,"stream":10,"util":18}],27:[function(require,module,exports){
+},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"deep-equal":26,"defined":29,"events":5,"path":8,"stream":10,"util":18}],26:[function(require,module,exports){
 var pSlice = Array.prototype.slice;
 var objectKeys = require('./lib/keys.js');
 var isArguments = require('./lib/is_arguments.js');
@@ -7114,7 +7488,7 @@ function objEquiv(a, b, opts) {
   return true;
 }
 
-},{"./lib/is_arguments.js":28,"./lib/keys.js":29}],28:[function(require,module,exports){
+},{"./lib/is_arguments.js":27,"./lib/keys.js":28}],27:[function(require,module,exports){
 var supportsArgumentsClass = (function(){
   return Object.prototype.toString.call(arguments)
 })() == '[object Arguments]';
@@ -7136,7 +7510,7 @@ function unsupported(object){
     false;
 };
 
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 exports = module.exports = typeof Object.keys === 'function'
   ? Object.keys : shim;
 
@@ -7147,20 +7521,20 @@ function shim (obj) {
   return keys;
 }
 
-},{}],30:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 module.exports = function () {
     for (var i = 0; i < arguments.length; i++) {
         if (arguments[i] !== undefined) return arguments[i];
     }
 };
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports=require(6)
-},{}],32:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 exports.parse = require('./lib/parse');
 exports.stringify = require('./lib/stringify');
 
-},{"./lib/parse":33,"./lib/stringify":34}],33:[function(require,module,exports){
+},{"./lib/parse":32,"./lib/stringify":33}],32:[function(require,module,exports){
 var at, // The index of the current character
     ch, // The current character
     escapee = {
@@ -7435,7 +7809,7 @@ module.exports = function (source, reviver) {
     }({'': result}, '')) : result;
 };
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
     escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
     gap,
@@ -7591,7 +7965,7 @@ module.exports = function (value, replacer, space) {
     return str('', {'': value});
 };
 
-},{}],35:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (process){
 var through = require('through');
 var nextTick = typeof setImmediate !== 'undefined'
@@ -7624,7 +7998,7 @@ module.exports = function (write, end) {
 };
 
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"))
-},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"through":36}],36:[function(require,module,exports){
+},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"through":35}],35:[function(require,module,exports){
 (function (process){
 var Stream = require('stream')
 
@@ -7736,17 +8110,17 @@ function through (write, end, opts) {
 
 
 }).call(this,require("C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js"))
-},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"stream":10}],37:[function(require,module,exports){
+},{"C:\\Users\\Anthropos\\AppData\\Roaming\\npm\\node_modules\\browserify\\node_modules\\insert-module-globals\\node_modules\\process\\browser.js":7,"stream":10}],36:[function(require,module,exports){
 var test = require('tape');
 
 var foldify = require('../');
-var files = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+var files = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 
 test('basic', function(t){
 	t.plan(1);
 	t.equal(files["file.txt"], "file.txt");
 })
-},{"../":19,"tape":23}],38:[function(require,module,exports){
+},{"../":19,"tape":22}],37:[function(require,module,exports){
 var path = require('path');
 var test = require('tape');
 var util = require('util')
@@ -7757,7 +8131,7 @@ test('blacklist - populate', function(t){
 
 	t.plan(1);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var res = typeof evaluate["js_file1"]
 			 + typeof evaluate["jsone_file1"]
 			 + typeof evaluate["jsone_file2"]
@@ -7775,7 +8149,7 @@ test('blacklist - evaluate + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	t.equal(typeof evaluate["js_file1"], "function");
 
 	var evaluated = evaluate([1,2,3], {blacklist: "js_file*", trim: true});
@@ -7808,7 +8182,7 @@ test('blacklist - tree + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = fold.bind({foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	t.equal(typeof evaluate.json.jsonone["jsonone_file.json"], "object");
 
 	var evaluated = evaluate([1,2,3], {blacklist: ["**/*.js", "**/*.json"], trim: true});
@@ -7841,14 +8215,14 @@ test('blacklist - tree + trim', function(t){
 
 });
 
-},{"../":19,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js":41,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":42,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":43,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":44,"C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":45,"path":8,"tape":23,"util":18}],39:[function(require,module,exports){
+},{"../":19,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js":40,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":41,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":42,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":43,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":44,"path":8,"tape":22,"util":18}],38:[function(require,module,exports){
 require('../basic');
 require('../blacklist');
 require('../evaluate');
 require('../recursive');
 require('../tree');
 require('../whitelist');
-},{"../basic":37,"../blacklist":38,"../evaluate":40,"../recursive":46,"../tree":47,"../whitelist":48}],40:[function(require,module,exports){
+},{"../basic":36,"../blacklist":37,"../evaluate":39,"../recursive":45,"../tree":46,"../whitelist":47}],39:[function(require,module,exports){
 var path = require('path');
 var test = require('tape');
 var util = require('util')
@@ -7859,7 +8233,7 @@ test('evaluate', function(t){
 
 	t.plan(2);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var evaluated = evaluate([1,2,3]);
 
 	t.equal(evaluated["jsone_file3"], "jsone_file3.js"+1+2+3);
@@ -7874,7 +8248,7 @@ test('evaluate - false (curry only)', function(t){
 
 	t.plan(3);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 
 	var evaluated = evaluate([1,2,3], {evaluate: false} );
 	t.equal(typeof(evaluated["jsone_file2"]), "function");
@@ -7887,29 +8261,29 @@ test('evaluate - false (curry only)', function(t){
 
 });
 
-},{"../":19,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":42,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":43,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":44,"path":8,"tape":23,"util":18}],41:[function(require,module,exports){
+},{"../":19,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":41,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":42,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":43,"path":8,"tape":22,"util":18}],40:[function(require,module,exports){
 module.exports = function(){}
-},{}],42:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 module.exports = function(arg1, arg2, arg3){
 	var returnMe = "jsone_file1.js"+arg1+arg2+arg3;
 	return returnMe;
 }
-},{}],43:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 module.exports = function(arg1, arg2, arg3){
 	var returnMe = "jsone_file2.js"+arg1+arg2+arg3;
 	return returnMe;
 }
-},{}],44:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 module.exports = function(arg1, arg2, arg3){
 	var returnMe = "jsone_file3.js"+arg1+arg2+arg3;
 	return returnMe;
 }
-},{}],45:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 module.exports={
 	"jsonone_file": "foobar",
 	"bar": { "baz": "bop "}
 }
-},{}],46:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 var path = require('path');
 var test = require('tape');
 var util = require('util')
@@ -7920,7 +8294,7 @@ test('recursive - structure', function(t){
 
 	t.plan(1);
 
-	var tree = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file.json"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var tree = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file.json"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 
 	var res = !!(tree["html_file1.html"] && tree["html_file2.html"] && tree["html_file3.html"]
 				&& tree["jsone_file1.js"] && tree["jsone_file2.js"] && tree["jsone_file3.js"] 
@@ -7934,7 +8308,7 @@ test('recursive - evaluate', function(t){
 
 	t.plan(2);
 
-	var tree = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1.js"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file.json"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var tree = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1.js"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file.json"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var evaluated = tree([1, 2, 3]);
 
 	var expected = "<html><body>html_file3.html</body></html>"
@@ -7959,7 +8333,7 @@ test('recursive - evaluate', function(t){
 
 });
 
-},{"../":19,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js":41,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":42,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":43,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":44,"C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":45,"path":8,"tape":23,"util":18}],47:[function(require,module,exports){
+},{"../":19,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js":40,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":41,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":42,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":43,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":44,"path":8,"tape":22,"util":18}],46:[function(require,module,exports){
 var path = require('path');
 var test = require('tape');
 var util = require('util');
@@ -7970,7 +8344,7 @@ test('tree - structure', function(t){
 
 	t.plan(1);
 
-	var tree = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = fold.bind({foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var tree = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var res = !!(tree.html["html_file1.html"] && tree.html["html_file2.html"] && tree.html["html_file3.html"]
 				&& tree.js.jsone["jsone_file1.js"] && tree.js.jsone["jsone_file2.js"] && tree.js.jsone["jsone_file3.js"] 
 				&& tree.js["js_file1.js"]
@@ -7983,7 +8357,7 @@ test('tree - evaluate', function(t){
 
 	t.plan(2);
 
-	var tree = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = fold.bind({foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var tree = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);var paths = ["file.txt"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "file.txt" ] = "file.txt";thismap[ "file.txt" ] = true;}}var paths = ["html","html_a","html_a.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_a.html" ] = "<html><body>html_a.html</body></html>";thismap[ "html_a.html" ] = true;}}var paths = ["html","html_file1.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file1.html" ] = "<html><body>html_file1.html</body></html>";thismap[ "html_file1.html" ] = true;}}var paths = ["html","html_file2.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file2.html" ] = "<html><body>html_file2.html</body></html>";thismap[ "html_file2.html" ] = true;}}var paths = ["html","html_file3.html"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "html_file3.html" ] = "<html><body>html_file3.html</body></html>";thismap[ "html_file3.html" ] = true;}}var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1.js" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2.js" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3.js" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1.js" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1.js" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file.json" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file.json" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var evaluated = tree([1, 2, 3]);
 
 	var expected = "<html><body>html_file3.html</body></html>"
@@ -8008,7 +8382,7 @@ test('tree - evaluate', function(t){
 
 });
 
-},{"../":19,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js":41,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":42,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":43,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":44,"C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":45,"path":8,"tape":23,"util":18}],48:[function(require,module,exports){
+},{"../":19,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js":40,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":41,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":42,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":43,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":44,"path":8,"tape":22,"util":18}],47:[function(require,module,exports){
 var path = require('path');
 var test = require('tape');
 var util = require('util')
@@ -8019,7 +8393,7 @@ test('whitelist - populate', function(t){
 
 	t.plan(1);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["js_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["js_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	var res = typeof evaluate["js_file1"]
 			 + typeof evaluate["jsone_file1"]
 			 + typeof evaluate["jsone_file2"]
@@ -8037,7 +8411,7 @@ test('whitelist - evaluate + trim', function(t){
 
 	t.plan(3);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;var returnMe = fold.bind({foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);returnMe["file.txt"] = "file.txt";returnMe["html_a.html"] = "<html><body>html_a.html</body></html>";returnMe["html_file1.html"] = "<html><body>html_file1.html</body></html>";returnMe["html_file2.html"] = "<html><body>html_file2.html</body></html>";returnMe["html_file3.html"] = "<html><body>html_file3.html</body></html>";returnMe["jsone_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");returnMe["jsone_file2"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");returnMe["jsone_file3"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");returnMe["js_file1"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");returnMe["jsonone_file"] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	t.equal(typeof evaluate["js_file1"], "function");
 
 	var evaluated = evaluate([1,2,3], {whitelist: "jsone_file*", trim: true});
@@ -8070,7 +8444,7 @@ test('whitelist - tree + trim', function(t){
 
 	t.plan(2);
 
-	var evaluate = ((function(){ Function.prototype.bind||(Function.prototype.bind=function(a){var b=Array.prototype.slice.call(arguments,1),c=this,d=function(){},e=function(){return c.apply(a?this:a,b.concat(Array.prototype.slice.call(arguments)))};return d.prototype=this.prototype,e.prototype=new d,e});var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = fold.bind({foldStatus: true, map: map}, proxy);var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file" ] = require("C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
+	var evaluate = ((function(){ var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };var fold = require("../"), proxy = {}, map = false;map = {};var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);var paths = ["js","jsone","jsone_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file1" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js");thismap[ "jsone_file1" ] = true;}}var paths = ["js","jsone","jsone_file2.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file2" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js");thismap[ "jsone_file2" ] = true;}}var paths = ["js","jsone","jsone_file3.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsone_file3" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js");thismap[ "jsone_file3" ] = true;}}var paths = ["js","js_file1.js"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "js_file1" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js");thismap[ "js_file1" ] = true;}}var paths = ["json","jsonone","jsonone_file.json"];var last, thismap;for(var x = 0, len = paths.length; x<len; x++){if(x===0){if(!returnMe[ paths[x] ] )returnMe[ paths[x] ] = {};last = returnMe[ paths[x] ];if(!map[ paths[x] ] )map[ paths[x] ] = {};thismap = map[ paths[x] ]}else if(x < (len-1)){if(!last[ paths[x] ] )last[ paths[x] ] = {};last = last[paths[x]];if(!thismap[ paths[x] ] )thismap[ paths[x] ] = {};thismap = thismap[ paths[x] ];}else{last[ "jsonone_file" ] = require("C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json");thismap[ "jsonone_file" ] = true;}}for(var p in returnMe){ proxy[p] = returnMe[p]; }return returnMe;})());
 	t.equal(typeof evaluate.json.jsonone["jsonone_file"], "object");
 
 	var evaluated = evaluate([1,2,3], {whitelist: ["**/js_file1", "js/**/*file*"], trim: true});
@@ -8093,4 +8467,4 @@ test('whitelist - tree + trim', function(t){
 
 });
 
-},{"../":19,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\js_file1.js":41,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":42,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":43,"C:\\node\\work\\opensource\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":44,"C:\\node\\work\\opensource\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":45,"path":8,"tape":23,"util":18}]},{},[39])
+},{"../":19,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\js_file1.js":40,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file1.js":41,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file2.js":42,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\js\\jsone\\jsone_file3.js":43,"C:\\node\\work\\opensource\\_dev\\foldify\\test\\files\\json\\jsonone\\jsonone_file.json":44,"path":8,"tape":22,"util":18}]},{},[38])
