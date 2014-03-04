@@ -5,7 +5,7 @@
     "url": "http://cellvia.github.io"
   },
   "name": "foldify",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {
@@ -35,7 +35,7 @@
       "chrome/canary",
       "opera/12..latest",
       "opera/next",
-      "safari/6.0..latest",
+      "safari/5.1..latest",
       "ipad/6.0..latest",
       "iphone/6.0..latest",
       "android-browser/4.2..latest"
