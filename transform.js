@@ -5,7 +5,7 @@ var util = require('util');
 var through = require('through');
 var falafel = require('falafel');
 var unparse = require('escodegen').generate;
-var minimatch = require('minimatch');
+var minimatch = require('minimatchify');
 
 var bindShim = "var bind = function bind(fn){ var args = Array.prototype.slice.call(arguments, 1); return function(){ var onearg = args.shift(); var newargs = args.concat(Array.prototype.slice.call(arguments,0)); var returnme = fn.apply(onearg, newargs ); return returnme; };  };";
 

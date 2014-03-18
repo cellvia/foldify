@@ -5,7 +5,7 @@
     "url": "http://cellvia.github.io"
   },
   "name": "foldify",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {

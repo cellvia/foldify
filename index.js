@@ -1,6 +1,6 @@
 var fs = require('fs'),
 	path = require('path'),
-	minimatch = require('minimatch');
+	minimatch = require('minimatchify');
 
 module.exports = fold;
 
