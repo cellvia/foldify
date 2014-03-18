@@ -276,18 +276,16 @@ curried3()
 * whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
 * compatible with for...in (no prototype properties to sort through)
 * tests in both server and browser
+* ie8 compatiblity thank the lawd
 
 ###yet to be completed:
 * ability to wrap a function around results
 * add tests for inputting arrays
 * add test for inputting and currying existing objects
 * add test for curry even upon evaluation (if undefined returned)
-* seems to be a browserify compatibility problem with ie8 (object.defineProperty)
 
 ## Testing
 
 Run `npm install` then `npm test` to test server code.
 
-To test in browser please install [browserify](https://github.com/substack/browserify) @~2 globally and [testling](https://github.com/substack/testling) globally, and then run `npm run browser-test` in the root dir of this module.
-
-NOTE: the tests in testling CI do not include safari 5.1, since they test incorrectly (passes locally)
+To test in browser please install [browserify](https://github.com/substack/browserify) globally and [testling](https://github.com/substack/testling) globally, and then run `testling -u` in the root dir of this module.
