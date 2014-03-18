@@ -5,28 +5,30 @@
     "url": "http://cellvia.github.io"
   },
   "name": "foldify",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
     "falafel": "~0.3.1",
-    "minimatch": "git+https://github.com/cellvia/minimatch.git"
+    "minimatchify": "~0.2.15"
   },
   "devDependencies": {
-    "tape": "~2.3.2"
+    "tape": "~2.10.2"
   },
   "repository": {
     "type": "git",
     "url": "git://github.com/cellvia/foldify.git"
   },
   "scripts": {
-    "test": "tape test/*.js",
-    "browser-test": "browserify ./test/browser/browser.js -t ./transform.js -o ./test/browser/browser-test.js && testling -u"
+    "test": "tape test/*.js"
+  },
+  "browserify":{
+    "transform": [ "transform.js" ]
   },
   "testling": {
-    "scripts": "test/browser/browser-test.js",
+    "files": "test/*.js",
     "browsers": [
       "ie/8..latest",
       "firefox/21..latest",
