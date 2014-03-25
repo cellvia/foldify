@@ -16,7 +16,6 @@ module.exports = function (file) {
     var vars = [ '__dirname' ];
     var dirname = path.dirname(file);
     var pending = 0;
-    var foldifyLocation = ~dirname.indexOf(path.join('foldify', 'test')) ? '../' : 'foldify';
 
     var tr = through(write, end);
     return tr;
@@ -61,7 +60,8 @@ module.exports = function (file) {
             if(isRequire(node)){
                 if(args[0] && args[0].value === 'foldify'){
                     check = true;
-                }else if(args[0]){
+                }
+                else if(args[0]){
                     try{
                         check = require.resolve(dirname + '/' + eval(unparse(args[0])));
                         check = check.split(path.sep);
@@ -81,134 +81,135 @@ module.exports = function (file) {
             && node.parent.left.type === 'Identifier') {
                 foldNames[node.parent.left.name] = true;
             }
-            
-            if ( isFold(node) && !containsUndefinedVariable(args[0]) ) {
-                
-                var thisDir = unparse(args[0]),
-                    thisDirParsed = eval(thisDir),
-                    fpath = path.normalize( Function(vars, 'return ' + thisDir)(dirname) ),
-                    thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
-                    obj = "",
-                    existingProps = [],
-                    separator,
-                    resolved,
-                    parts,
-                    files = [];
 
-                if(typeof thisOpts !== "object"){
-                    return tr.emit('error', 'foldify (browserify) second argument must be an options object');
-                }
+            if (!isFold(node) || containsUndefinedVariable(args[0])) return;
+                            
+            var thisDir = unparse(args[0]),
+                thisDirParsed = eval(thisDir),
+                fpath = path.normalize( Function(vars, 'return ' + thisDir)(dirname) ),
+                thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
+                obj = "",
+                existingProps = [],
+                separator,
+                resolved,
+                parts,
+                files = [];
 
-                var toString = thisOpts.output && thisOpts.output.toLowerCase() === "string",
-                    toArray = thisOpts.output && thisOpts.output.toLowerCase() === "array";
-
-                try{
-                    if(~thisDirParsed.indexOf("/"))
-                        separator = "/";
-                    if(~thisDirParsed.indexOf("\\"))
-                        separator = "\\";
-                    parts = thisDirParsed.split(separator);
-                    resolved = path.dirname( require.resolve( parts[0] + separator + 'package.json' ) );
-                    if(!~resolved.indexOf("node_modules")) throw "not a node module";
-                    fpath = resolved + path.sep + parts.slice(1).join(separator);                    
-                }catch(err){}
-
-                obj+= "((function(){ ";
-                obj+= bindShim;
-                
-                if(toString){
-                    obj+= "var returnMe = '';";                                    
-                }
-                else if(toArray){
-                    obj+= "var returnMe = [];";
-                }else{
-                    obj+= "var fold = require("+JSON.stringify(foldifyLocation)+"), proxy = {}, map = false;";
-                    obj+= thisOpts.tree ? "map = {};" : "";
-                    obj+= "var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);";
-                }
-
-                function recurs(dirname2){
-                    fs.readdirSync(dirname2).forEach(function(file){
-                        var filepath = path.join( dirname2, file);
-                        if(path.extname(file) === ''){
-                          if(thisOpts.recursive || thisOpts.tree) recurs(filepath);
-                          return  
-                        } 
-                        files.push(filepath);
-                    });
-                }
-                recurs(fpath);
-
-                if(thisOpts.whitelist) files = whitelist(thisOpts.whitelist, files, path.resolve(fpath) );
-                if(thisOpts.blacklist) files = blacklist(thisOpts.blacklist, files, path.resolve(fpath) );
-
-                files.forEach(function(filepath){
-                    var ext = path.extname(filepath),
-                        name = path.basename(filepath, ext),
-                        filename = name + ext,
-                        isJs = ext === ".js" || ext === ".json",
-                        propname;
-
-                    if( toString ){
-                        obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
-                        return
-                    }
-
-                    if( toArray ){
-                        obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
-                        return
-                    }
-
-                    if((isJs && thisOpts.jsToString) || !isJs)
-                        toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
-                    else
-                        toRequire = "require("+JSON.stringify(filepath)+")";
-
-                    if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
-                        propname = JSON.stringify(name);
-                    else
-                        propname = JSON.stringify(filename);
-
-                    if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
-                        propname = filepath;
-                    else
-                        existingProps.push(propname);                            
-
-                    if(thisOpts.tree){
-                        var paths = path.relative(fpath, filepath).split(path.sep);
-                        obj+="var paths = " + JSON.stringify(paths) + ";";
-                        obj+="var last, thismap;";
-                        obj+="for(var x = 0, len = paths.length; x<len; x++){";
-                            obj+="if(x===0){";
-                                obj+="if(!returnMe[ paths[x] ] )";
-                                    obj+="returnMe[ paths[x] ] = {};";
-                                obj+="last = returnMe[ paths[x] ];";
-                                obj+="if(!map[ paths[x] ] )";
-                                    obj+="map[ paths[x] ] = {};";
-                                obj+="thismap = map[ paths[x] ]";
-                            obj+="}else if(x < (len-1)){";
-                                obj+="if(!last[ paths[x] ] )";
-                                    obj+="last[ paths[x] ] = {};";
-                                obj+="last = last[paths[x]];";
-                                obj+="if(!thismap[ paths[x] ] )";
-                                    obj+="thismap[ paths[x] ] = {};";
-                                obj+="thismap = thismap[ paths[x] ];";
-                            obj+="}else{";
-                                obj+="last[ " + propname + " ] = " + toRequire + ";";
-                                obj+="thismap[ " + propname + " ] = true;";
-                            obj+="}";
-                        obj+="}";
-                    }else{
-                        obj += "returnMe[" + propname + "] = " + toRequire + ";";                    
-                    }
-
-                });
-                
-                if(!toString && !toArray)
-                    obj+= "for(var p in returnMe){ proxy[p] = returnMe[p]; }";
-                obj += "return returnMe;})())";
-                node.update(obj);
+            if(typeof thisOpts !== "object"){
+                return tr.emit('error', 'foldify (browserify) second argument must be an options object');
             }
+
+            var toString = thisOpts.output && thisOpts.output.toLowerCase() === "string",
+                toArray = thisOpts.output && thisOpts.output.toLowerCase() === "array";
+
+            try{
+                if(~thisDirParsed.indexOf("/"))
+                    separator = "/";
+                if(~thisDirParsed.indexOf("\\"))
+                    separator = "\\";
+                parts = thisDirParsed.split(separator);
+                resolved = path.dirname( require.resolve( parts[0] + separator + 'package.json' ) );
+                if(!~resolved.indexOf("node_modules")) throw "not a node module";
+                fpath = resolved + path.sep + parts.slice(1).join(separator);                    
+            }catch(err){}
+
+            obj+= "((function(){ ";
+            obj+= bindShim;
+            
+            if(toString){
+                obj+= "var returnMe = '';";                                    
+            }
+            else if(toArray){
+                obj+= "var returnMe = [];";
+            }else{
+                obj+= "var fold = require('foldify'), proxy = {}, map = false;";
+                obj+= thisOpts.tree ? "map = {};" : "";
+                obj+= "var returnMe = bind( fold, {foldStatus: true, map: map}, proxy);";
+            }
+
+            function recurs(dirname2){
+                fs.readdirSync(dirname2).forEach(function(file){
+                    var filepath = path.join( dirname2, file);
+                    if(path.extname(file) === ''){
+                      if(thisOpts.recursive || thisOpts.tree) recurs(filepath);
+                      return  
+                    } 
+                    files.push(filepath);
+                });
+            }
+            recurs(fpath);
+
+            if(thisOpts.whitelist) files = whitelist(thisOpts.whitelist, files, path.resolve(fpath) );
+            if(thisOpts.blacklist) files = blacklist(thisOpts.blacklist, files, path.resolve(fpath) );
+
+            files.forEach(function(filepath){
+                var ext = path.extname(filepath),
+                    name = path.basename(filepath, ext),
+                    filename = name + ext,
+                    isJs = ext === ".js" || ext === ".json",
+                    propname;
+
+                if( toString ){
+                    obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
+                    return
+                }
+
+                if( toArray ){
+                    obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
+                    return
+                }
+
+                if((isJs && thisOpts.jsToString) || !isJs)
+                    toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
+                else
+                    toRequire = "require("+JSON.stringify(filepath)+")";
+
+                if(!thisOpts.includeExt && (isJs || thisOpts.includeExt === false) )
+                    propname = JSON.stringify(name);
+                else
+                    propname = JSON.stringify(filename);
+
+                if(thisOpts.fullPath || ~existingProps.indexOf(propname) )
+                    propname = filepath;
+                else
+                    existingProps.push(propname);                            
+
+                if(thisOpts.tree){
+                    var paths = path.relative(fpath, filepath).split(path.sep);
+                    obj+="var paths = " + JSON.stringify(paths) + ";";
+                    obj+="var last, thismap;";
+                    obj+="for(var x = 0, len = paths.length; x<len; x++){";
+                        obj+="if(x===0){";
+                            obj+="if(!returnMe[ paths[x] ] )";
+                                obj+="returnMe[ paths[x] ] = {};";
+                            obj+="last = returnMe[ paths[x] ];";
+                            obj+="if(!map[ paths[x] ] )";
+                                obj+="map[ paths[x] ] = {};";
+                            obj+="thismap = map[ paths[x] ]";
+                        obj+="}else if(x < (len-1)){";
+                            obj+="if(!last[ paths[x] ] )";
+                                obj+="last[ paths[x] ] = {};";
+                            obj+="last = last[paths[x]];";
+                            obj+="if(!thismap[ paths[x] ] )";
+                                obj+="thismap[ paths[x] ] = {};";
+                            obj+="thismap = thismap[ paths[x] ];";
+                        obj+="}else{";
+                            obj+="last[ " + propname + " ] = " + toRequire + ";";
+                            obj+="thismap[ " + propname + " ] = true;";
+                        obj+="}";
+                    obj+="}";
+                }else{
+                    obj += "returnMe[" + propname + "] = " + toRequire + ";";                    
+                }
+
+            });
+            
+            if(!toString && !toArray)
+                obj+= "for(var p in returnMe){ proxy[p] = returnMe[p]; }";
+            obj += "return returnMe;})())";
+            node.update(obj);
+            tr.emit('file', fpath);
+            
         });
         return output;
     }

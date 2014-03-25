@@ -5,7 +5,7 @@
     "url": "http://cellvia.github.io"
   },
   "name": "foldify",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "dependencies": {
@@ -24,8 +24,11 @@
   "scripts": {
     "test": "tape test/*.js"
   },
-  "browserify":{
-    "transform": [ "transform.js" ]
+  "browser": {
+    "foldify": "./index.js"
+  },
+  "browserify": {
+    "transform": "transform.js"
   },
   "testling": {
     "files": "test/*.js",
