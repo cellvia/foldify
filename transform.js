@@ -88,6 +88,7 @@ module.exports = function (file) {
                 thisDirParsed = eval(thisDir),
                 fpath = path.normalize( Function(vars, 'return ' + thisDir)(dirname) ),
                 thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
+                encoding = thisOpts.encoding || thisOpts.enc || "utf-8",
                 obj = "",
                 existingProps = [],
                 separator,
@@ -150,17 +151,17 @@ module.exports = function (file) {
                     propname;
 
                 if( toString ){
-                    obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ";";                 
+                    obj += "returnMe += " + JSON.stringify(fs.readFileSync(filepath, encoding)) + ";";                 
                     return
                 }
 
                 if( toArray ){
-                    obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, "utf-8")) + ");";                 
+                    obj += "returnMe.push( " + JSON.stringify(fs.readFileSync(filepath, encoding)) + ");";                 
                     return
                 }
 
                 if((isJs && thisOpts.jsToString) || !isJs)
-                    toRequire = JSON.stringify(fs.readFileSync(filepath, 'utf-8'));
+                    toRequire = JSON.stringify(fs.readFileSync(filepath, encoding));
                 else
                     toRequire = "require("+JSON.stringify(filepath)+")";
 
@@ -231,7 +232,7 @@ module.exports = function (file) {
                 if(~output.indexOf(name)) return
                 if( minimatch(name, rule) )
                     output.push(name);
-            }) 
+            })
         });
         return output;
     }
