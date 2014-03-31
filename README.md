@@ -136,6 +136,10 @@ A benefit of **fullPath** is more flexibility with minimatch white/black listing
 
 Import `.js` / `.json` files as strings rather than require them.
 
+### encoding (default: 'utf-8')
+
+Change the encoding of files that are readFileSync'ed
+
 ## Evaluating the hash
 
 Once the hash is initialized, it becomes a function that can be evaluated.  It is also an object whose properties make up the hash.  Everytime the function is evaluated, it returns another function-object that can also be evaluated.
@@ -277,12 +281,14 @@ curried3()
 * compatible with for...in (no prototype properties to sort through)
 * tests in both server and browser
 * ie8 compatiblity thank the lawd
+* base64 encoding
 
 ###yet to be completed:
-* ability to wrap a function around results
+* ability to wrap a function to transform individual results (needed?)
 * add tests for inputting arrays
 * add test for inputting and currying existing objects
 * add test for curry even upon evaluation (if undefined returned)
+* combine curry objects (a la extend)
 
 ## Testing
 

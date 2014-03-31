@@ -79,6 +79,7 @@ function populate(dirname, options){
 	var proxy = {},
 		toString = options.output && options.output.toLowerCase() === "string",
 		toArray = options.output && options.output.toLowerCase() === "array",
+		encoding = options.encoding || options.enc || "utf-8",
 		returnMe,
 		existingProps = [],
 		newdirname,
@@ -133,12 +134,12 @@ function populate(dirname, options){
 			last = false;
 
 		if( toString ){
-			returnMe += fs.readFileSync(filepath, "utf-8");					
+			returnMe += fs.readFileSync(filepath, encoding);					
 			return
 		}
 
 		if( toArray ){
-			returnMe.push( fs.readFileSync(filepath, "utf-8") );
+			returnMe.push( fs.readFileSync(filepath, encoding) );
 			return
 		}
 
@@ -155,7 +156,7 @@ function populate(dirname, options){
 		}
 
 		if((isJs && options.jsToString) || !isJs )
-			add = fs.readFileSync(filepath, "utf-8");
+			add = fs.readFileSync(filepath, encoding);
 		else
 			add = require(filepath);
 
