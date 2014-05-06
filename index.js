@@ -45,8 +45,10 @@ function fold(toBeFolded){
 	switch(false){
 		case !isDir:
 			options = moreArgs[0] || {};
-			stack = callsite();
-			options.requester = stack[1].getFileName();
+			if(!process.browser){
+				stack = callsite();				
+				options.requester = stack[1].getFileName();
+			}
 			output = populate.apply(this, [toBeFolded, options]);
 		break;
 		case !isFoldObj:
@@ -102,7 +104,7 @@ function populate(dirname, options){
 	}
 
     try{
-    	if(/(^\.\/)|(^\.\.\/)/.test(dirname)){
+    	if(options.requester && /(^\.\/)|(^\.\.\/)/.test(dirname)){
     		dirname = dirname
                     .replace(/^\.\//, path.dirname(options.requester)+"/")
                     .replace(/^\.\.\//, path.dirname(options.requester)+"/../");
