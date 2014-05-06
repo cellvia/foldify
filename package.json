@@ -5,9 +5,19 @@
     "url": "http://cellvia.github.io"
   },
   "name": "foldify",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
+  "keywords": [
+  	"require",
+  	"require-all",
+  	"recursive",
+  	"directory",
+  	"browserify",
+  	"browserify-transform",
+  	"curry",
+  	"files"
+  ],
   "dependencies": {
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
