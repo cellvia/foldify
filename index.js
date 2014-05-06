@@ -1,6 +1,7 @@
 var fs = require('fs'),
 	path = require('path'),
-	minimatch = require('minimatchify');
+	minimatch = require('minimatchify'),
+    callsite = require('callsite');
 
 module.exports = fold;
 
@@ -10,8 +11,9 @@ function fold(toBeFolded){
 		mergeToMe = {},
 		options,
 		individual,
-		originalFullPath;
-
+		originalFullPath,
+		stack;
+	   
 	if(isArray(toBeFolded)){
 		options = moreArgs[0];
 		originalFullPath = options.fullPath;
@@ -43,6 +45,8 @@ function fold(toBeFolded){
 	switch(false){
 		case !isDir:
 			options = moreArgs[0] || {};
+			stack = callsite();
+			options.requester = stack[1].getFileName();
 			output = populate.apply(this, [toBeFolded, options]);
 		break;
 		case !isFoldObj:
@@ -86,7 +90,8 @@ function populate(dirname, options){
 		separator,
 		parts,
 		map = options.tree ? {} : false,
-		files = [];
+		files = [],
+		matches;
 
 	if(toString){
 		returnMe = "";
@@ -97,6 +102,12 @@ function populate(dirname, options){
 	}
 
     try{
+    	if(/(^\.\/)|(^\.\.\/)/.test(dirname)){
+    		dirname = dirname
+                    .replace(/^\.\//, path.dirname(options.requester)+"/")
+                    .replace(/^\.\.\//, path.dirname(options.requester)+"/../");
+            throw "done";
+    	}
 	    if(~dirname.indexOf("/"))
 	        separator = "/";
 	    if(~dirname.indexOf("\\"))

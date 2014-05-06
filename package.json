@@ -12,7 +12,8 @@
     "through": "~2.3.4",
     "escodegen": "~1.0.0",
     "falafel": "~0.3.1",
-    "minimatchify": "~0.2.15"
+    "minimatchify": "~0.2.15",
+    "callsite": "^1.0.0"
   },
   "devDependencies": {
     "tape": "~2.10.2"

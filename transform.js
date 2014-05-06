@@ -83,9 +83,16 @@ module.exports = function (file) {
             }
 
             if (!isFold(node) || containsUndefinedVariable(args[0])) return;
-                            
-            var thisDir = unparse(args[0]),
-                thisDirParsed = eval(thisDir),
+                 
+            var thisDir = unparse(args[0]);
+            if(/^'\.\//.test(thisDir) || /^'\.\.\//.test(thisDir)){
+                thisDir = thisDir
+                    .replace(/^'\.\//, "__dirname +'/")
+                    .replace(/^'\.\.\//, "__dirname + '/../' +'/")
+                    .replace(/ \+'\/'$/, "");
+            }
+
+            var thisDirParsed = eval(thisDir),
                 fpath = path.normalize( Function(vars, 'return ' + thisDir)(dirname) ),
                 thisOpts = args[1] ? eval("(" + unparse(args[1]) + ")") : {},
                 encoding = thisOpts.encoding || thisOpts.enc || "utf-8",
