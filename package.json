@@ -9,24 +9,24 @@
   "description": "Import / require folder(s) of any type of files, and evaluate / curry the results.",
   "main": "./index.js",
   "keywords": [
-  	"require",
-  	"require-all",
-  	"recursive",
-  	"directory",
-  	"browserify",
-  	"browserify-transform",
-  	"curry",
-  	"files"
+    "require",
+    "require-all",
+    "recursive",
+    "directory",
+    "browserify",
+    "browserify-transform",
+    "curry",
+    "files"
   ],
   "dependencies": {
-    "through": "~2.3.4",
+    "callsite": "~1.0.0",
     "escodegen": "~1.0.0",
     "falafel": "~0.3.1",
     "minimatchify": "~0.2.15",
-    "callsite": "~1.0.0"
+    "through": "^2.3.4"
   },
   "devDependencies": {
-    "tape": "~2.10.2"
+    "tape": "^2.12.3"
   },
   "repository": {
     "type": "git",
@@ -35,14 +35,16 @@
   "scripts": {
     "test": "tape test/*.js"
   },
+  "browserify": {
+    "transform": [
+      "transform.js"
+    ]
+  },
   "browser": {
     "foldify": "./index.js"
   },
-  "browserify": {
-    "transform": "transform.js"
-  },
   "testling": {
-    "files": "test/*.js",
+    "files": "test/index.js",
     "browsers": [
       "ie/8..latest",
       "firefox/21..latest",
