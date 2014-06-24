@@ -294,4 +294,4 @@ curried3()
 
 Run `npm install` then `npm test` to test server code.
 
-To test in browser please install [browserify](https://github.com/substack/browserify) globally and [testling](https://github.com/substack/testling) globally, and then run `testling -u` in the root dir of this module.
+To test in browser please install [browserify](https://github.com/substack/browserify) globally and [testling](https://github.com/substack/testling) globally, and then run `testling -u`
