@@ -3,8 +3,6 @@ Fold your folders, any way you like.
 
 Import / require folders of any filetypes; evaluate / curry the results.
 
-[![browser support](http://ci.testling.com/cellvia/foldify.png)](http://ci.testling.com/cellvia/foldify)
-
 [![build status](https://secure.travis-ci.org/cellvia/foldify.png)](http://travis-ci.org/cellvia/foldify)
 
 ```javascript
@@ -44,11 +42,11 @@ There are two steps to usage.  First you must *initialize the hash*, by running 
 
 When the hash is initialized the result is a function object with properties whose content is taken from the respective files and names are taken from the filenames.
 
-Note: `.js` and `.json` files are `require()`'d into the hash, while all other files are `fs.readFileSync()`'d.  
+Note: `.js` and `.json` files are `require()`'d into the hash, while all other files are `fs.readFileSync()`'d.
 
 Hash is something like:
 ```javascript
-{ 	filename: require("./filename.js"), 
+{ 	filename: require("./filename.js"),
 	filename2: fs.readFileSync("./filename.html") }
 ```
 
@@ -88,7 +86,7 @@ for(var controllerName in errorControllers){
 
 **NOTE:** due to browserify limitations, clientside initialization option properties may NOT be dynamically assigned, and must occur inline.
 
-### recursive (default: false) 
+### recursive (default: false)
 
 Include subfolders.
 
@@ -102,7 +100,7 @@ Include subfolders, and return hierarchical structure based on filepath.
 
 ### whitelist
 
-Accepts string or array.  
+Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon filepaths using supplied whitelist patterns, supplied rules are prefixed with the curried directory. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
@@ -113,7 +111,7 @@ var stylesAndHtml = foldify(__dirname + "/client", {whitelist: ["*.less, *.html"
 
 ### blacklist
 
-Accepts string or array.  
+Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon filepaths using supplied blacklist patterns.  Supplied rules are prefixed by the curried directory. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
@@ -144,7 +142,7 @@ Change the encoding of files that are readFileSync'ed
 
 Once the hash is initialized, it becomes a function that can be evaluated.  It is also an object whose properties make up the hash.  Everytime the function is evaluated, it returns another function-object that can also be evaluated.
 
-Evaluation is very useful when keeping folders of like files that export functions taking similar arguments.  
+Evaluation is very useful when keeping folders of like files that export functions taking similar arguments.
 
 For example a folder of express routes a la:
 ```javascript
@@ -174,7 +172,7 @@ routes(app);
 
 ### whitelist
 
-Accepts string or array.  
+Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon property names using supplied whitelist patterns. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
@@ -189,7 +187,7 @@ If hash is **tree** structure, whitelist rules should use `/` as a delimiter for
 
 ### blacklist
 
-Accepts string or array.  
+Accepts string or array.
 Uses [minimatch](https://github.com/isaacs/minimatch) upon property names using supplied blacklist patterns. Reference [minimatch](https://github.com/isaacs/minimatch) documentation for matching behavior.
 
 ```javascript
@@ -273,9 +271,9 @@ curried3()
 ## Features
 
 ###completed:
-* server side and client side support (via supplied browserify transform)  
-* can return a tree structure, keeps track where in the structure to evaluate without polluting object itself  
-* can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)  
+* server side and client side support (via supplied browserify transform)
+* can return a tree structure, keeps track where in the structure to evaluate without polluting object itself
+* can include npm modules or subfolders of npm modules (if you want to grab specific folder of css/less files from a module for example)
 * can be folded endlessly
 * whitelist / blacklist files or properties at each iteration (using [minimatch](https://github.com/isaacs/minimatch))
 * compatible with for...in (no prototype properties to sort through)
